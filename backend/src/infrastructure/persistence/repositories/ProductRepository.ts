@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { ProductMapper } from '../mappers/ProductMapper';
-import { IProductRepository, ProductRecord } from '../../../application/ports/out/CalculationPersistence';
+import {
+  IProductRepository,
+  ProductRecord,
+} from '../../../application/ports/out/CalculationPersistence';
 
 export class ProductRepository implements IProductRepository {
   constructor(private prisma: PrismaClient) {}

@@ -95,6 +95,7 @@ model User {
   role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
   createdAt DateTime @default(now())
 
-  // MIGRATION: Scaffolding only — auth ships in Phase B.
-  // Until then, every Calculation.userId is null (all requests are guests).
+  // MIGRATION: Scaffolding only — no real auth exists yet (deliberately out
+  // of scope for Phase B, see README Known Limitations). Calculation.userId
+  // is accepted from the client but unverified until a real auth phase lands.
 }

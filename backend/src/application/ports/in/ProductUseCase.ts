@@ -2,9 +2,9 @@ import { ProductRecord } from '../out/CalculationPersistence';
 
 /**
  * Input port (Hexagonal pattern) for the product catalog. Kept alongside
- * ICalculateUseCase in ports/in — the real application-layer implementation
- * (backed by Prisma) lands in a later phase; for now it's satisfied by a
- * stub in server.ts.
+ * ICalculateUseCase in ports/in. Implemented by ProductUseCaseAdapter — a
+ * thin pass-through over IProductRepository, not a full application
+ * service (no orchestration logic beyond "ask the repository" exists yet).
  */
 export interface IProductUseCase {
   getAll(limit?: number): Promise<ProductRecord[]>;

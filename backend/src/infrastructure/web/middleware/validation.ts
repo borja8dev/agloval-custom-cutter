@@ -2,7 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError } from 'zod';
 
 // z.flattenError() is Zod v4's current API — error.flatten() is deprecated.
-function respondValidationError(res: Response, req: Request, code: string, message: string, error: ZodError) {
+function respondValidationError(
+  res: Response,
+  req: Request,
+  code: string,
+  message: string,
+  error: ZodError
+): void {
   res.status(400).json({
     success: false,
     error: { code, message, details: z.flattenError(error) },
@@ -13,11 +19,17 @@ function respondValidationError(res: Response, req: Request, code: string, messa
 
 /** Usage: router.post('/', validateRequest(SomeSchema), controller.handler) */
 export function validateRequest(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      respondValidationError(res, req, 'VALIDATION_ERROR', 'Request validation failed', result.error);
+      respondValidationError(
+        res,
+        req,
+        'VALIDATION_ERROR',
+        'Request validation failed',
+        result.error
+      );
       return;
     }
 
@@ -27,11 +39,17 @@ export function validateRequest(schema: ZodSchema) {
 }
 
 export function validateQuery(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query);
 
     if (!result.success) {
-      respondValidationError(res, req, 'QUERY_VALIDATION_ERROR', 'Query parameters validation failed', result.error);
+      respondValidationError(
+        res,
+        req,
+        'QUERY_VALIDATION_ERROR',
+        'Query parameters validation failed',
+        result.error
+      );
       return;
     }
 
@@ -41,11 +59,17 @@ export function validateQuery(schema: ZodSchema) {
 }
 
 export function validateParams(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.params);
 
     if (!result.success) {
-      respondValidationError(res, req, 'PARAMS_VALIDATION_ERROR', 'URL parameters validation failed', result.error);
+      respondValidationError(
+        res,
+        req,
+        'PARAMS_VALIDATION_ERROR',
+        'URL parameters validation failed',
+        result.error
+      );
       return;
     }
 

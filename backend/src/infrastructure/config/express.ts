@@ -9,7 +9,10 @@ import { errorHandler } from '../web/middleware/errorHandler';
 import { ICalculateUseCase } from '../../application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../application/ports/in/ProductUseCase';
 
-export function createExpressApp(calculationUseCase: ICalculateUseCase, productUseCase: IProductUseCase): Express {
+export function createExpressApp(
+  calculationUseCase: ICalculateUseCase,
+  productUseCase: IProductUseCase
+): Express {
   const app = express();
 
   app.use(

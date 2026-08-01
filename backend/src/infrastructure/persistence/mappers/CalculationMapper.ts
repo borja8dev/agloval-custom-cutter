@@ -17,7 +17,10 @@ export class CalculationMapper {
     return {
       id: calculation.id,
       productId: calculation.productId,
-      requestedPieces: calculation.requestedPieces as unknown as Array<{ width: number; height: number }>,
+      requestedPieces: calculation.requestedPieces as unknown as Array<{
+        width: number;
+        height: number;
+      }>,
       totalAreaNeeded: Number(calculation.totalAreaNeeded),
       boardsUsed: Number(calculation.boardsUsed),
       pricePerBoard: Number(calculation.pricePerBoard),

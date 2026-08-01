@@ -1,5 +1,8 @@
 import { ProductUseCaseAdapter } from '../../../src/application/services/ProductUseCaseAdapter';
-import { IProductRepository, ProductRecord } from '../../../src/application/ports/out/CalculationPersistence';
+import {
+  IProductRepository,
+  ProductRecord,
+} from '../../../src/application/ports/out/CalculationPersistence';
 
 describe('ProductUseCaseAdapter', () => {
   const sampleProduct: ProductRecord = {

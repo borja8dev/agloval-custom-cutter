@@ -35,7 +35,13 @@ export class ProductController extends BaseController {
   public search = asyncHandler(async (req: Request, res: Response) => {
     const query = req.query.q as string;
     if (!query || query.length < 2) {
-      return this.error(req, res, 'INVALID_QUERY', 'Search query must be at least 2 characters', 400);
+      return this.error(
+        req,
+        res,
+        'INVALID_QUERY',
+        'Search query must be at least 2 characters',
+        400
+      );
     }
 
     const products = await this.useCase.search(query);

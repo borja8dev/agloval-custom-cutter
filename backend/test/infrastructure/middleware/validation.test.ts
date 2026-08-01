@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { validateRequest, validateQuery, validateParams } from '../../../src/infrastructure/web/middleware/validation';
+import {
+  validateRequest,
+  validateQuery,
+  validateParams,
+} from '../../../src/infrastructure/web/middleware/validation';
 
 describe('validation middleware', () => {
   let mockReq: Partial<Request>;

@@ -18,7 +18,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
   }
 
   const originalJson = res.json;
-  res.json = function (body: unknown) {
+  res.json = function (body: unknown): Response {
     const duration = Date.now() - startTime;
     console.log(`[${requestId}] Response: ${res.statusCode} (${duration}ms)`);
     return originalJson.call(this, body);
@@ -35,7 +35,7 @@ export function responseTime(_req: Request, res: Response, next: NextFunction): 
   const start = Date.now();
   const originalJson = res.json;
 
-  res.json = function (body: unknown) {
+  res.json = function (body: unknown): Response {
     res.setHeader('X-Response-Time', `${Date.now() - start}ms`);
     return originalJson.call(this, body);
   };
