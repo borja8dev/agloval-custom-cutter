@@ -41,8 +41,24 @@ npm run test:coverage # Coverage report
 
 ## Database
 
-```bash
-npm run prisma:migrate    # Run migrations
-npm run prisma:studio     # Open Prisma Studio
-npm run seed              # Seed test data
-```
+1. Copy the environment template and start PostgreSQL via Docker:
+   ```bash
+   cp .env.example .env
+   docker-compose up -d
+   ```
+   (run from the repo root — `docker-compose.yml` lives there)
+
+2. Run migrations:
+   ```bash
+   npm run prisma:migrate
+   ```
+
+3. Seed test data:
+   ```bash
+   npm run seed
+   ```
+
+4. (Optional) Browse the database:
+   ```bash
+   npm run prisma:studio
+   ```
