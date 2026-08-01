@@ -29,6 +29,7 @@ export interface CalculationRecord {
   pricePerBoard: number; // €
   totalPrice: number; // €
   status: 'DRAFT' | 'SUBMITTED' | 'COMPLETED';
+  userId?: string | null;
   createdAt: Date;
   expiresAt?: Date | null;
   product: {
@@ -47,6 +48,7 @@ export interface IProductRepository {
   findById(productId: string): Promise<ProductRecord | null>;
   findAll(limit?: number): Promise<ProductRecord[]>;
   findByCategory(categoryId: string): Promise<ProductRecord[]>;
+  search(query: string): Promise<ProductRecord[]>;
 }
 
 export interface ICalculationRepository {
