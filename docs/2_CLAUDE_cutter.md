@@ -65,95 +65,81 @@ agloval-custom-cutter/
 ├── backend/                            # Express app (port 5000)
 │   ├── src/
 │   │   ├── domain/                     # CORE LOGIC (zero dependencies)
-│   │   │   ├── entities/
-│   │   │   │   ├── Product.ts
-│   │   │   │   ├── Calculation.ts
-│   │   │   │   └── Piece.ts
 │   │   │   ├── services/
-│   │   │   │   ├── CuttingCalculator.ts    # Lógica pura (no @Service)
-│   │   │   │   └── PricingCalculator.ts
-│   │   │   └── exceptions/
-│   │   │       ├── InvalidMeasurementException.ts
-│   │   │       ├── InsufficientBoardAreaException.ts
-│   │   │       └── ProductNotFoundException.ts
+│   │   │   │   └── CuttingCalculator.ts    # Lógica pura — área, tableros, waste%
+│   │   │   ├── exceptions/
+│   │   │   │   └── DomainException.ts      # Base + InvalidPieceException, EmptyPiecesListException, InvalidBoardDimensionsException, InsufficientBoardAreaException
+│   │   │   └── types.ts                    # Piece, BoardDimensions, CalculationResult
 │   │   │
 │   │   ├── application/                # CASOS DE USO + PUERTOS
 │   │   │   ├── ports/
 │   │   │   │   ├── in/
 │   │   │   │   │   ├── CalculateUseCase.ts
-│   │   │   │   │   └── GetProductsUseCase.ts
+│   │   │   │   │   └── ProductUseCase.ts
 │   │   │   │   └── out/
-│   │   │   │       ├── ProductPersistencePort.ts
-│   │   │   │       └── CalculationPersistencePort.ts
+│   │   │   │       └── CalculationPersistence.ts   # IProductRepository, ICalculationRepository + record types
 │   │   │   ├── services/
 │   │   │   │   ├── CalculationApplicationService.ts
-│   │   │   │   └── ProductApplicationService.ts
+│   │   │   │   └── ProductUseCaseAdapter.ts        # thin pass-through, not a full app service yet
+│   │   │   ├── validation/
+│   │   │   │   └── CalculationSchemas.ts           # Zod schemas
+│   │   │   ├── exceptions/
+│   │   │   │   └── ApplicationException.ts         # ProductNotFoundException, CalculationNotFoundException, InvalidCalculationStatusException
 │   │   │   └── dto/
-│   │   │       ├── CalculationRequestDTO.ts
-│   │   │       ├── CalculationResponseDTO.ts
-│   │   │       └── ProductDTO.ts
+│   │   │       ├── CalculationRequest.ts
+│   │   │       └── CalculationResponse.ts
 │   │   │
-│   │   ├── infrastructure/             # ADAPTADORES (Express, Prisma)
+│   │   ├── infrastructure/             # ADAPTADORES (Express, Prisma) — no auth yet, see Known Limitations in README
 │   │   │   ├── web/
 │   │   │   │   ├── controllers/
+│   │   │   │   │   ├── BaseController.ts
 │   │   │   │   │   ├── CalculationController.ts
-│   │   │   │   │   ├── ProductController.ts
-│   │   │   │   │   └── AuthController.ts
+│   │   │   │   │   └── ProductController.ts
 │   │   │   │   ├── middleware/
-│   │   │   │   │   ├── authMiddleware.ts
-│   │   │   │   │   ├── errorHandler.ts
-│   │   │   │   │   └── validateRequest.ts
-│   │   │   │   └── routes/
-│   │   │   │       ├── calculations.routes.ts
-│   │   │   │       ├── products.routes.ts
-│   │   │   │       └── auth.routes.ts
+│   │   │   │   │   ├── errorHandler.ts     # DomainException + Prisma error -> HTTP status
+│   │   │   │   │   ├── validation.ts       # Zod-backed request validation
+│   │   │   │   │   └── logging.ts
+│   │   │   │   ├── routes/
+│   │   │   │   │   ├── calculations.routes.ts
+│   │   │   │   │   └── products.routes.ts
+│   │   │   │   └── types/
+│   │   │   │       └── express.d.ts        # Request augmentation (requestId, validatedBody, ...)
 │   │   │   ├── persistence/
-│   │   │   │   ├── CalculationRepository.ts    # implements CalculationPersistencePort
-│   │   │   │   ├── ProductRepository.ts        # implements ProductPersistencePort
-│   │   │   │   └── repositories.ts             # Exports all repos (DI)
-│   │   │   ├── config/
-│   │   │   │   ├── database.ts         # Prisma client
-│   │   │   │   ├── environment.ts      # Env validation
-│   │   │   │   └── cors.ts
-│   │   │   ├── seed/
-│   │   │   │   └── seed.ts             # Agloval products data
-│   │   │   └── security/
-│   │   │       ├── JwtTokenProvider.ts
-│   │   │       └── PasswordEncoder.ts
+│   │   │   │   ├── repositories/
+│   │   │   │   │   ├── ProductRepository.ts       # implements IProductRepository
+│   │   │   │   │   └── CalculationRepository.ts   # implements ICalculationRepository
+│   │   │   │   └── mappers/
+│   │   │   │       ├── ProductMapper.ts
+│   │   │   │       └── CalculationMapper.ts
+│   │   │   └── config/
+│   │   │       ├── express.ts          # App wiring: middleware, routes
+│   │   │       └── database.ts         # Prisma client singleton, healthCheck()
 │   │   │
-│   │   └── server.ts                   # Express entry point
+│   │   └── server.ts                   # Entry point (run via `tsx`, not compiled dist/)
 │   │
-│   ├── test/
-│   │   ├── domain/
-│   │   │   └── CuttingCalculator.test.ts
-│   │   ├── application/
-│   │   │   └── CalculationApplicationService.test.ts
-│   │   └── infrastructure/
-│   │       └── CalculationController.integration.test.ts
+│   ├── test/                           # Mirrors src/ — 131 tests total
 │   │
 │   ├── prisma/
 │   │   ├── schema.prisma               # DB schema
+│   │   ├── seed.ts                     # 3 categories, 10 fictitious products
 │   │   └── migrations/                 # Auto-generated by Prisma
 │   │
-│   ├── .env                            # Local dev env
+│   ├── .env                            # Local dev env (gitignored)
 │   ├── .env.example                    # Template
 │   ├── package.json
 │   └── tsconfig.json
 │
 ├── docs/
-│   ├── README.md                       # Main project description
+│   ├── 2_CLAUDE_cutter.md              # This file — project constitution
+│   ├── API.md                          # Endpoint reference
 │   ├── ARCHITECTURE.md                 # Diagrams + rationale
-│   ├── API.md                          # Swagger-like API docs
 │   ├── MIGRATION_GUIDE.md              # HOW TO SWITCH TO REAL BD (CRITICAL)
-│   ├── DEPLOYMENT.md                   # Vercel + Render setup
-│   ├── TROUBLESHOOTING.md              # Common issues + fixes
 │   └── DECISIONS.md                    # Why we chose X over Y
 │
 ├── docker-compose.yml                  # PostgreSQL + pgAdmin (local)
 ├── .gitignore
 ├── .env.example
-├── package.json                        # Root: runs both frontend + backend
-├── CLAUDE.md                           # This file
+├── package.json                        # Root: shells out to frontend/backend (no workspaces yet)
 └── README.md                           # Quick start
 
 ```
@@ -445,7 +431,7 @@ REACT_APP_ENV=development
 2. **API design:** Check `docs/API.md`
 3. **Migration concern:** Read `docs/MIGRATION_GUIDE.md` (CRITICAL)
 4. **Code example:** Look at tests in `backend/test/`
-5. **Setup issue:** Check `docs/TROUBLESHOOTING.md`
+5. **Setup issue:** Check the Troubleshooting sections in the root and backend READMEs
 6. **Design decision:** Read `docs/DECISIONS.md`
 
 ---
@@ -462,7 +448,7 @@ REACT_APP_ENV=development
    Pregunta: [specific need today]
    ```
 
-2. **CLAUDE.md auto-injected** (this file)
+2. **`docs/2_CLAUDE_cutter.md` auto-injected** (this file)
 
 3. **Work on feature**
 
@@ -524,17 +510,20 @@ npm run seed  # Seed data
 
 ## PHASES (Structural breakdown)
 
-**Phase A:** Setup + Domain
+**Phase A:** Setup + Domain — **Done, tagged `v0.1.0`**
 - Project scaffold (monorepo)
 - Prisma schema
 - CuttingCalculator service
 - Initial tests
 
-**Phase B:** Backend API
-- Express controllers
-- Error handling
-- API docs
-- Integration tests
+**Phase B:** Backend API — **Done, tagged `v0.2.0`**
+- Express controllers, routes, middleware
+- Real Prisma repositories + mappers
+- Full calculation CRUD (create/get/list/update/delete)
+- Error handling (`DomainException` + Prisma error translation)
+- `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATION_GUIDE.md`, `docs/DECISIONS.md`
+- 131 tests (unit + HTTP integration + DB integration)
+- Auth intentionally out of scope — see Known Limitations in the root README
 
 **Phase C:** Frontend + Integration
 - React components

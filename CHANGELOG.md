@@ -17,6 +17,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.2.0] - 2026-08-01
+
+Phase B — Backend API + Error handling, complete.
+
+### Added
+- `CalculationRequestDTO`/`CalculationResponseDTO`, Zod validation (`CalculationRequestSchema`, `CalculationUpdateSchema`)
+- `ICalculateUseCase`/`IProductUseCase` input ports, `IProductRepository`/`ICalculationRepository` output ports
+- `CalculationApplicationService`: orchestrates `CuttingCalculator` + persistence, including full update/delete (recomputes from new pieces, never trusts raw totals from a caller)
+- `ProductNotFoundException`, `CalculationNotFoundException`, `InvalidCalculationStatusException` (409 for DRAFT-only violations)
+- Express controllers, routes, and middleware: `errorHandler` (maps `DomainException` + Prisma `PrismaClientKnownRequestError` to HTTP status), `validation`, `logging`
+- Real Prisma repositories (`ProductRepository`, `CalculationRepository`) and mappers, replacing the Phase B.2 stubs
+- Full CRUD on `/api/calculations` (create, get, list, update, delete) and `/api/products` (list, get, search)
+- 131 backend tests total (~98% statement coverage): unit, `supertest` HTTP integration, and Postgres-backed repository integration
+- `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATION_GUIDE.md`, `docs/DECISIONS.md`
+
+### Changed
+- `npm start` now runs via `tsx` (same as `dev`) instead of compiled `dist/` output, which fails under real Node ESM module resolution
+- Root README, backend README, and `docs/2_CLAUDE_cutter.md` updated to reflect the actual Phase B API surface and file structure
+
+### Fixed
+- `.eslintrc.json` had a typo'd rule name that silently broke linting on every file since Phase A
+- 9 source files were not Prettier-formatted
+- Removed unused `joi` and `jsonwebtoken` dependencies (no auth code exists yet)
+
 ## [0.1.0] - 2026-08-01
 
 Phase A — Setup + Domain layer + Database, complete.
@@ -34,5 +58,6 @@ Phase A — Setup + Domain layer + Database, complete.
 - Domain exceptions (`InvalidPieceException`, `EmptyPiecesListException`, `InvalidBoardDimensionsException`, `InsufficientBoardAreaException`)
 - 32 unit tests for `CuttingCalculator` (100% statement coverage on the service)
 
-[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.1.0

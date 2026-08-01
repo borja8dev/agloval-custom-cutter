@@ -4,10 +4,10 @@
 
 A web solution that allows customers to purchase wood boards in custom dimensions instead of only standard sizes. The system calculates how much of the board is used and adjusts pricing automatically.
 
-**Status:** In Development | **Current Version:** v0.1.0
+**Status:** In Development | **Current Version:** v0.2.0
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -127,28 +127,33 @@ agloval-custom-cutter/
 ├── backend/                     # Node.js/Express API
 │   ├── src/
 │   │   ├── domain/              # Business logic (zero dependencies)
-│   │   │   ├── entities/        # Data models
-│   │   │   ├── services/        # Domain services
-│   │   │   └── exceptions/      # Custom exceptions
+│   │   │   ├── services/        # CuttingCalculator (pure domain logic)
+│   │   │   └── exceptions/      # Domain exceptions
 │   │   ├── application/         # Use cases & ports
-│   │   │   ├── ports/           # Interfaces
-│   │   │   ├── services/        # Application services
-│   │   │   └── dto/              # Request/response objects
+│   │   │   ├── ports/in/        # Input ports (use case interfaces)
+│   │   │   ├── ports/out/       # Output ports (repository interfaces)
+│   │   │   ├── services/        # CalculationApplicationService, adapters
+│   │   │   ├── validation/      # Zod schemas
+│   │   │   ├── exceptions/      # Application exceptions
+│   │   │   └── dto/             # Request/response objects
 │   │   ├── infrastructure/      # Adapters (Express, Prisma)
-│   │   │   ├── web/             # Controllers & routes
-│   │   │   ├── persistence/     # Database repositories
-│   │   │   ├── config/          # Configuration
-│   │   │   └── seed/             # Data seeding
+│   │   │   ├── web/             # Controllers, routes, middleware
+│   │   │   ├── persistence/     # Prisma repositories & mappers
+│   │   │   └── config/          # Express app + database client
 │   │   └── server.ts            # Express entry point
-│   ├── test/                    # Test suites
+│   ├── test/                    # Test suites (131 tests)
 │   ├── prisma/
 │   │   ├── schema.prisma        # Database schema
 │   │   ├── seed.ts              # Dev seed data
 │   │   └── migrations/          # Migration files
 │   └── package.json
 │
-├── docs/                        # Additional documentation
-│   └── 2_CLAUDE_cutter.md       # Project constitution / dev guidelines
+├── docs/                        # Documentation
+│   ├── 2_CLAUDE_cutter.md       # Project constitution / dev guidelines
+│   ├── API.md                   # Endpoint reference
+│   ├── ARCHITECTURE.md          # Hexagonal layering + rationale
+│   ├── MIGRATION_GUIDE.md       # Mapping to Agloval's real database
+│   └── DECISIONS.md             # Architectural decision log
 │
 ├── docker-compose.yml           # PostgreSQL + pgAdmin
 └── .gitignore
@@ -160,7 +165,7 @@ agloval-custom-cutter/
 
 ### Hexagonal (Ports & Adapters)
 
-The backend follows hexagonal architecture for maintainability and scalability:
+The backend follows hexagonal architecture for maintainability and scalability. Full diagram + layer-by-layer rationale: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ```
 ┌─────────────────────────────────────┐
@@ -182,7 +187,23 @@ The backend follows hexagonal architecture for maintainability and scalability:
 
 ## API
 
-The API surface (Express controllers, routes, error handling) ships in **Phase B** and isn't implemented yet. It will be documented here once it exists.
+Base URL: `http://localhost:5000` (dev). Full reference with request/response examples: [docs/API.md](./docs/API.md).
+
+| Method | Path | Description | Status codes |
+|--------|------|-------------|---------------|
+| `POST` | `/api/calculations` | Calculate + persist a cutting quote | `201`, `400` |
+| `GET` | `/api/calculations/:id` | Fetch a calculation | `200`, `404` |
+| `GET` | `/api/calculations?userId=` | List a user's calculations | `200`, `401`¹ |
+| `PUT` | `/api/calculations/:id` | Recompute a DRAFT calculation from new pieces | `200`, `400`, `404`, `409` |
+| `DELETE` | `/api/calculations/:id` | Delete a DRAFT calculation | `204`, `404`, `409` |
+| `GET` | `/api/products` | List products | `200` |
+| `GET` | `/api/products/:id` | Fetch a product | `200`, `404` |
+| `GET` | `/api/products/search?q=` | Search products by name/description | `200`, `400` |
+| `GET` | `/health` | Health check | `200` |
+
+¹ No authentication exists yet — see [Known Limitations](#known-limitations). `GET /api/calculations` currently 401s unconditionally since nothing sets a user identity.
+
+Every response is wrapped as `{ success, data | error, timestamp, requestId }`. Domain and Prisma errors are translated to the appropriate 4xx status by a central error handler — see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ---
 
@@ -193,7 +214,7 @@ This project is built iteratively in phases:
 | Phase | Focus | Status |
 |-------|-------|--------|
 | **A** | Setup + Domain layer + Database | **Done** — tagged `v0.1.0` |
-| **B** | Backend API + Error handling | Not started |
+| **B** | Backend API + Error handling | **Done** — tagged `v0.2.0` |
 | **C** | Frontend UI + Integration | Not started |
 | **D** | Testing + Documentation + Release | Not started |
 
@@ -209,13 +230,15 @@ Each phase is tagged in Git with semantic versioning.
 - **Integration Tests (API):** Full endpoints with database
 - **E2E Tests (UI):** Critical user flows
 
-`CuttingCalculator` (domain layer) has 32 unit tests, 100% statement coverage. API and E2E suites ship in Phases B and C.
+Backend has 131 tests across domain, application, and infrastructure layers (~98% statement coverage overall) — unit tests for `CuttingCalculator` and the application service, `supertest` integration tests for every controller against a real Express app, and repository integration tests against a real Postgres instance. E2E suites ship in Phase C once there's a UI to drive.
 
 **Target Coverage:** >70% backend, critical flows for E2E
 
 ---
 
 ## Design Decisions
+
+Full architectural decision log: [docs/DECISIONS.md](./docs/DECISIONS.md).
 
 ### Why Hexagonal Architecture?
 - Aligns with industry standards (used at tier-1 companies)
@@ -243,22 +266,22 @@ Each phase is tagged in Git with semantic versioning.
 
 ## Known Limitations
 
+- **No authentication.** `jsonwebtoken` isn't even installed — there's no login, session, or JWT middleware anywhere in the codebase. `requestedPieces`/`userId` on a calculation is just whatever the client sends, unverified. `GET /api/calculations` (list by user) is permanently unreachable (401) as a direct consequence — this is deliberate, not an oversight: building real auth is scoped as its own future phase, not something to bolt on as "polish."
 - No real-time sync between tabs (stateless API by design)
 - No historical analytics (future feature)
 - No multi-language support (MVP is Spanish/English)
 - No payment integration (manual order fulfillment)
-- No authentication in v1.0 (future feature)
 
 ---
 
 ## Roadmap
 
 ### v1.0 (Current target)
-- Core calculation engine
-- API endpoints
-- React UI
-- Database persistence
-- Testing framework
+- [x] Core calculation engine
+- [x] API endpoints
+- [x] Database persistence
+- [x] Testing framework
+- [ ] React UI
 
 ### v1.1+ (Future)
 - User accounts & authentication
