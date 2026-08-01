@@ -5,7 +5,11 @@ import {
   CalculationRecord,
 } from '../../../src/application/ports/out/CalculationPersistence';
 import { CalculationRequestDTO } from '../../../src/application/dto/CalculationRequest';
-import { ProductNotFoundException, CalculationNotFoundException } from '../../../src/application/exceptions/ApplicationException';
+import {
+  ProductNotFoundException,
+  CalculationNotFoundException,
+  InvalidCalculationStatusException,
+} from '../../../src/application/exceptions/ApplicationException';
 
 describe('CalculationApplicationService', () => {
   let service: CalculationApplicationService;
@@ -33,29 +37,31 @@ describe('CalculationApplicationService', () => {
     // would after persisting it — mapToDTOFromEntity() rebuilds the response
     // from this, so the mock needs to be a believable full CalculationRecord.
     mockCalculationRepo = {
-      save: jest.fn().mockImplementation((data: Partial<CalculationRecord>): Promise<CalculationRecord> =>
-        Promise.resolve({
-          id: 'calc_123',
-          productId: data.productId!,
-          requestedPieces: data.requestedPieces!,
-          totalAreaNeeded: data.totalAreaNeeded!,
-          boardsUsed: data.boardsUsed!,
-          pricePerBoard: data.pricePerBoard!,
-          totalPrice: data.totalPrice!,
-          status: data.status ?? 'DRAFT',
-          userId: data.userId,
-          createdAt: new Date(),
-          expiresAt: data.expiresAt,
-          product: {
-            id: 'prod_1',
-            name: 'Melamina Blanca 300x200',
-            standardWidth: 300,
-            standardHeight: 200,
-            thickness: 18,
-            category: { name: 'Melamina' },
-          },
-        })
-      ),
+      save: jest
+        .fn()
+        .mockImplementation((data: Partial<CalculationRecord>): Promise<CalculationRecord> =>
+          Promise.resolve({
+            id: 'calc_123',
+            productId: data.productId!,
+            requestedPieces: data.requestedPieces!,
+            totalAreaNeeded: data.totalAreaNeeded!,
+            boardsUsed: data.boardsUsed!,
+            pricePerBoard: data.pricePerBoard!,
+            totalPrice: data.totalPrice!,
+            status: data.status ?? 'DRAFT',
+            userId: data.userId,
+            createdAt: new Date(),
+            expiresAt: data.expiresAt,
+            product: {
+              id: 'prod_1',
+              name: 'Melamina Blanca 300x200',
+              standardWidth: 300,
+              standardHeight: 200,
+              thickness: 18,
+              category: { name: 'Melamina' },
+            },
+          })
+        ),
       findById: jest.fn(),
       findByUserId: jest.fn(),
       update: jest.fn(),
@@ -95,7 +101,10 @@ describe('CalculationApplicationService', () => {
         search: jest.fn(),
       };
 
-      const serviceNotFound = new CalculationApplicationService(mockRepoNotFound, mockCalculationRepo);
+      const serviceNotFound = new CalculationApplicationService(
+        mockRepoNotFound,
+        mockCalculationRepo
+      );
 
       const request: CalculationRequestDTO = {
         productId: 'prod_invalid',
@@ -182,7 +191,9 @@ describe('CalculationApplicationService', () => {
     test('should throw CalculationNotFoundException if calculation not found', async () => {
       (mockCalculationRepo.findById as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.getCalculation('calc_invalid')).rejects.toThrow(CalculationNotFoundException);
+      await expect(service.getCalculation('calc_invalid')).rejects.toThrow(
+        CalculationNotFoundException
+      );
     });
   });
 
@@ -217,6 +228,100 @@ describe('CalculationApplicationService', () => {
 
       expect(response.length).toBe(2);
       expect(response[0].id).toBe('calc_1');
+    });
+  });
+
+  describe('updateCalculation()', () => {
+    const existingEntity: CalculationRecord = {
+      id: 'calc_1',
+      productId: 'prod_1',
+      requestedPieces: [{ width: 100, height: 100 }],
+      totalAreaNeeded: 1,
+      boardsUsed: 0.2,
+      pricePerBoard: 100,
+      totalPrice: 20,
+      status: 'DRAFT',
+      createdAt: new Date(),
+      product: {
+        id: 'prod_1',
+        name: 'Test Product',
+        standardWidth: 300,
+        standardHeight: 200,
+        thickness: 18,
+        category: { name: 'Test Category' },
+      },
+    };
+
+    test('should recompute area/boards/price from the new pieces, not trust raw totals', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue(existingEntity);
+      (mockCalculationRepo.update as jest.Mock).mockImplementation((_id, data) =>
+        Promise.resolve({ ...existingEntity, ...data })
+      );
+
+      const newPieces = [
+        { width: 200, height: 100 },
+        { width: 200, height: 100 },
+      ]; // 4 m² on a 6 m² board -> 0.7 boards
+
+      const response = await service.updateCalculation('calc_1', newPieces);
+
+      expect(mockCalculationRepo.update).toHaveBeenCalledWith(
+        'calc_1',
+        expect.objectContaining({
+          requestedPieces: newPieces,
+          totalAreaNeeded: 4,
+          boardsUsed: 0.7,
+          totalPrice: 70, // 0.7 x pricePerBoard(100)
+        })
+      );
+      expect(response.requestedPieces).toEqual(newPieces);
+    });
+
+    test('should throw CalculationNotFoundException if the calculation does not exist', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.updateCalculation('calc_missing', [{ width: 100, height: 100 }])
+      ).rejects.toThrow(CalculationNotFoundException);
+      expect(mockCalculationRepo.update).not.toHaveBeenCalled();
+    });
+
+    test('should propagate InvalidCalculationStatusException from the repository', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue(existingEntity);
+      (mockCalculationRepo.update as jest.Mock).mockRejectedValue(
+        new InvalidCalculationStatusException('COMPLETED', 'update')
+      );
+
+      await expect(
+        service.updateCalculation('calc_1', [{ width: 100, height: 100 }])
+      ).rejects.toThrow(InvalidCalculationStatusException);
+    });
+  });
+
+  describe('deleteCalculation()', () => {
+    test('should delegate to the repository', async () => {
+      await service.deleteCalculation('calc_1');
+      expect(mockCalculationRepo.delete).toHaveBeenCalledWith('calc_1');
+    });
+
+    test('should propagate CalculationNotFoundException from the repository', async () => {
+      (mockCalculationRepo.delete as jest.Mock).mockRejectedValue(
+        new CalculationNotFoundException('calc_missing')
+      );
+
+      await expect(service.deleteCalculation('calc_missing')).rejects.toThrow(
+        CalculationNotFoundException
+      );
+    });
+
+    test('should propagate InvalidCalculationStatusException from the repository', async () => {
+      (mockCalculationRepo.delete as jest.Mock).mockRejectedValue(
+        new InvalidCalculationStatusException('SUBMITTED', 'delete')
+      );
+
+      await expect(service.deleteCalculation('calc_1')).rejects.toThrow(
+        InvalidCalculationStatusException
+      );
     });
   });
 });

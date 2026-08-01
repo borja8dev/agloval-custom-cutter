@@ -1,9 +1,16 @@
 import { ICalculateUseCase } from '../ports/in/CalculateUseCase';
-import { IProductRepository, ICalculationRepository, CalculationRecord } from '../ports/out/CalculationPersistence';
+import {
+  IProductRepository,
+  ICalculationRepository,
+  CalculationRecord,
+} from '../ports/out/CalculationPersistence';
 import { CalculationRequestDTO } from '../dto/CalculationRequest';
 import { CalculationResponseDTO } from '../dto/CalculationResponse';
 import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
-import { ProductNotFoundException, CalculationNotFoundException } from '../exceptions/ApplicationException';
+import {
+  ProductNotFoundException,
+  CalculationNotFoundException,
+} from '../exceptions/ApplicationException';
 
 /**
  * Implements ICalculateUseCase. Orchestrates the domain service and the
@@ -57,9 +64,47 @@ export class CalculationApplicationService implements ICalculateUseCase {
     return this.mapToDTOFromEntity(calculation);
   }
 
-  async listUserCalculations(userId: string, limit: number = 50): Promise<CalculationResponseDTO[]> {
+  async listUserCalculations(
+    userId: string,
+    limit: number = 50
+  ): Promise<CalculationResponseDTO[]> {
     const calculations = await this.calculationRepository.findByUserId(userId, limit);
     return calculations.map((c) => this.mapToDTOFromEntity(c));
+  }
+
+  async updateCalculation(
+    calculationId: string,
+    requestedPieces: Array<{ width: number; height: number }>
+  ): Promise<CalculationResponseDTO> {
+    const existing = await this.calculationRepository.findById(calculationId);
+    if (!existing) {
+      throw new CalculationNotFoundException(calculationId);
+    }
+
+    // Recompute from the domain service — never trust raw totals from a caller.
+    const calculator = new CuttingCalculator({
+      width: existing.product.standardWidth,
+      height: existing.product.standardHeight,
+      thickness: existing.product.thickness,
+    });
+
+    const calculationResult = calculator.calculate(requestedPieces);
+    const totalPrice = calculationResult.boardsNeeded * existing.pricePerBoard;
+
+    // update() enforces the DRAFT-only rule itself (single source of truth
+    // for that invariant); it throws InvalidCalculationStatusException.
+    const updated = await this.calculationRepository.update(calculationId, {
+      requestedPieces,
+      totalAreaNeeded: calculationResult.totalAreaNeeded,
+      boardsUsed: calculationResult.boardsNeeded,
+      totalPrice,
+    });
+
+    return this.mapToDTOFromEntity(updated);
+  }
+
+  async deleteCalculation(calculationId: string): Promise<void> {
+    await this.calculationRepository.delete(calculationId);
   }
 
   private mapToDTOFromEntity(entity: CalculationRecord): CalculationResponseDTO {

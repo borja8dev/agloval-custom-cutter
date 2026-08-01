@@ -4,7 +4,10 @@ import { createExpressApp } from '../../../src/infrastructure/config/express';
 import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { CalculationResponseDTO } from '../../../src/application/dto/CalculationResponse';
-import { CalculationNotFoundException } from '../../../src/application/exceptions/ApplicationException';
+import {
+  CalculationNotFoundException,
+  InvalidCalculationStatusException,
+} from '../../../src/application/exceptions/ApplicationException';
 
 describe('CalculationController - Integration', () => {
   let app: Express;
@@ -40,6 +43,8 @@ describe('CalculationController - Integration', () => {
       calculate: jest.fn().mockResolvedValue(sampleResponse),
       getCalculation: jest.fn(),
       listUserCalculations: jest.fn(),
+      updateCalculation: jest.fn().mockResolvedValue(sampleResponse),
+      deleteCalculation: jest.fn().mockResolvedValue(undefined),
     };
 
     mockProductUseCase = {
@@ -105,8 +110,12 @@ describe('CalculationController - Integration', () => {
     });
 
     test('should map domain exceptions to their declared status code', async () => {
-      const { InvalidPieceException } = await import('../../../src/domain/exceptions/DomainException');
-      const mockError = new InvalidPieceException({ width: 500, height: 100 }, 'Exceeds board width');
+      const { InvalidPieceException } =
+        await import('../../../src/domain/exceptions/DomainException');
+      const mockError = new InvalidPieceException(
+        { width: 500, height: 100 },
+        'Exceeds board width'
+      );
 
       (mockCalculationUseCase.calculate as jest.Mock).mockRejectedValueOnce(mockError);
 
@@ -166,7 +175,10 @@ describe('CalculationController - Integration', () => {
 
   describe('Error Handler - Response Format', () => {
     test('all error responses should have requestId', async () => {
-      const response = await request(app).post('/api/calculations').send({ invalid: 'payload' }).expect(400);
+      const response = await request(app)
+        .post('/api/calculations')
+        .send({ invalid: 'payload' })
+        .expect(400);
 
       expect(response.body.requestId).toBeDefined();
       expect(response.body.timestamp).toBeDefined();
@@ -198,23 +210,92 @@ describe('CalculationController - Integration', () => {
     });
   });
 
-  describe('PUT/DELETE /api/calculations/:id', () => {
-    test('PUT should respond 501 not implemented', async () => {
-      const response = await request(app).put('/api/calculations/calc_1').send({}).expect(501);
+  describe('PUT /api/calculations/:id', () => {
+    test('should recompute and return 200 on success', async () => {
+      const payload = { requestedPieces: [{ width: 150, height: 150 }] };
 
-      expect(response.body.error.code).toBe('NOT_IMPLEMENTED');
+      const response = await request(app)
+        .put('/api/calculations/calc_123')
+        .send(payload)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(mockCalculationUseCase.updateCalculation).toHaveBeenCalledWith(
+        'calc_123',
+        payload.requestedPieces
+      );
     });
 
-    test('DELETE should respond 501 not implemented', async () => {
-      const response = await request(app).delete('/api/calculations/calc_1').expect(501);
+    test('should reject an empty pieces array with 400', async () => {
+      const response = await request(app)
+        .put('/api/calculations/calc_123')
+        .send({ requestedPieces: [] })
+        .expect(400);
 
-      expect(response.body.error.code).toBe('NOT_IMPLEMENTED');
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
+      expect(mockCalculationUseCase.updateCalculation).not.toHaveBeenCalled();
+    });
+
+    test('should return 404 when the calculation does not exist', async () => {
+      (mockCalculationUseCase.updateCalculation as jest.Mock).mockRejectedValueOnce(
+        new CalculationNotFoundException('calc_missing')
+      );
+
+      const response = await request(app)
+        .put('/api/calculations/calc_missing')
+        .send({ requestedPieces: [{ width: 100, height: 100 }] })
+        .expect(404);
+
+      expect(response.body.error.code).toBe('CALCULATION_NOT_FOUND');
+    });
+
+    test('should return 409 when the calculation is not DRAFT', async () => {
+      (mockCalculationUseCase.updateCalculation as jest.Mock).mockRejectedValueOnce(
+        new InvalidCalculationStatusException('COMPLETED', 'update')
+      );
+
+      const response = await request(app)
+        .put('/api/calculations/calc_123')
+        .send({ requestedPieces: [{ width: 100, height: 100 }] })
+        .expect(409);
+
+      expect(response.body.error.code).toBe('INVALID_CALCULATION_STATUS');
+    });
+  });
+
+  describe('DELETE /api/calculations/:id', () => {
+    test('should return 204 on success', async () => {
+      await request(app).delete('/api/calculations/calc_123').expect(204);
+
+      expect(mockCalculationUseCase.deleteCalculation).toHaveBeenCalledWith('calc_123');
+    });
+
+    test('should return 404 when the calculation does not exist', async () => {
+      (mockCalculationUseCase.deleteCalculation as jest.Mock).mockRejectedValueOnce(
+        new CalculationNotFoundException('calc_missing')
+      );
+
+      const response = await request(app).delete('/api/calculations/calc_missing').expect(404);
+
+      expect(response.body.error.code).toBe('CALCULATION_NOT_FOUND');
+    });
+
+    test('should return 409 when the calculation is not DRAFT', async () => {
+      (mockCalculationUseCase.deleteCalculation as jest.Mock).mockRejectedValueOnce(
+        new InvalidCalculationStatusException('SUBMITTED', 'delete')
+      );
+
+      const response = await request(app).delete('/api/calculations/calc_123').expect(409);
+
+      expect(response.body.error.code).toBe('INVALID_CALCULATION_STATUS');
     });
   });
 
   describe('GET /api/products', () => {
     test('should list products', async () => {
-      (mockProductUseCase.getAll as jest.Mock).mockResolvedValueOnce([{ id: 'prod_1', name: 'Test' }]);
+      (mockProductUseCase.getAll as jest.Mock).mockResolvedValueOnce([
+        { id: 'prod_1', name: 'Test' },
+      ]);
 
       const response = await request(app).get('/api/products?limit=10').expect(200);
 
@@ -225,7 +306,10 @@ describe('CalculationController - Integration', () => {
 
   describe('GET /api/products/:id', () => {
     test('should return a product', async () => {
-      (mockProductUseCase.getById as jest.Mock).mockResolvedValueOnce({ id: 'prod_1', name: 'Test' });
+      (mockProductUseCase.getById as jest.Mock).mockResolvedValueOnce({
+        id: 'prod_1',
+        name: 'Test',
+      });
 
       const response = await request(app).get('/api/products/prod_1').expect(200);
 

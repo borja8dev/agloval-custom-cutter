@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { CalculationController } from '../controllers/CalculationController';
 import { validateRequest } from '../middleware/validation';
-import { CalculationRequestSchema } from '../../../application/validation/CalculationSchemas';
+import {
+  CalculationRequestSchema,
+  CalculationUpdateSchema,
+} from '../../../application/validation/CalculationSchemas';
 
 export function createCalculationRoutes(controller: CalculationController): Router {
   const router = Router();
@@ -15,10 +18,10 @@ export function createCalculationRoutes(controller: CalculationController): Rout
   // GET /api/calculations — authenticated user's calculations (?limit=)
   router.get('/', controller.listCalculations);
 
-  // PUT /api/calculations/:id — coming soon
-  router.put('/:id', controller.updateCalculation);
+  // PUT /api/calculations/:id — recomputes from new pieces, DRAFT only (409 otherwise)
+  router.put('/:id', validateRequest(CalculationUpdateSchema), controller.updateCalculation);
 
-  // DELETE /api/calculations/:id — coming soon
+  // DELETE /api/calculations/:id — 204, DRAFT only (409 otherwise)
   router.delete('/:id', controller.deleteCalculation);
 
   return router;

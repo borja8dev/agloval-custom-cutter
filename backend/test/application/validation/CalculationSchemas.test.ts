@@ -1,4 +1,7 @@
-import { CalculationRequestSchema, validateCalculationRequest } from '../../../src/application/validation/CalculationSchemas';
+import {
+  CalculationRequestSchema,
+  validateCalculationRequest,
+} from '../../../src/application/validation/CalculationSchemas';
 
 describe('CalculationRequestSchema', () => {
   test('should validate correct request', () => {

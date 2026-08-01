@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Single { width, height } piece, in cm. */
-const PieceSchema = z.object({
+export const PieceSchema = z.object({
   width: z.number().positive('Width must be positive').finite('Width must be finite'),
   height: z.number().positive('Height must be positive').finite('Height must be finite'),
 });
@@ -28,6 +28,16 @@ export const CalculationRequestSchema = z.object({
 });
 
 export type CalculationRequestInput = z.infer<typeof CalculationRequestSchema>;
+
+/** PUT /api/calculations/:id body — recomputes from new pieces, doesn't accept raw totals. */
+export const CalculationUpdateSchema = z.object({
+  requestedPieces: z
+    .array(PieceSchema)
+    .min(1, 'At least one piece must be provided')
+    .max(100, 'Maximum 100 pieces per calculation'),
+});
+
+export type CalculationUpdateInput = z.infer<typeof CalculationUpdateSchema>;
 
 export function validateCalculationRequest(input: unknown): {
   success: boolean;

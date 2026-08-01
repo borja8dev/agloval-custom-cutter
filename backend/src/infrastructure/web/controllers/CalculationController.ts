@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { ICalculateUseCase } from '../../../application/ports/in/CalculateUseCase';
 import { CalculationRequestDTO } from '../../../application/dto/CalculationRequest';
+import { CalculationUpdateInput } from '../../../application/validation/CalculationSchemas';
 import { asyncHandler } from '../middleware/errorHandler';
 
 export class CalculationController extends BaseController {
@@ -46,7 +47,9 @@ export class CalculationController extends BaseController {
       return this.error(req, res, 'MISSING_ID', 'Calculation ID is required', 400);
     }
 
-    return this.error(req, res, 'NOT_IMPLEMENTED', 'Update endpoint coming soon', 501);
+    const { requestedPieces } = req.validatedBody as CalculationUpdateInput;
+    const response = await this.useCase.updateCalculation(id, requestedPieces);
+    return this.ok(req, res, response, 200);
   });
 
   /** DELETE /api/calculations/:id (only DRAFT status) */
@@ -56,6 +59,7 @@ export class CalculationController extends BaseController {
       return this.error(req, res, 'MISSING_ID', 'Calculation ID is required', 400);
     }
 
-    return this.error(req, res, 'NOT_IMPLEMENTED', 'Delete endpoint coming soon', 501);
+    await this.useCase.deleteCalculation(id);
+    return res.status(204).end();
   });
 }

@@ -1,6 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { CalculationMapper } from '../mappers/CalculationMapper';
-import { ICalculationRepository, CalculationRecord } from '../../../application/ports/out/CalculationPersistence';
+import {
+  ICalculationRepository,
+  CalculationRecord,
+} from '../../../application/ports/out/CalculationPersistence';
+import {
+  CalculationNotFoundException,
+  InvalidCalculationStatusException,
+} from '../../../application/exceptions/ApplicationException';
 
 const withProduct = {
   product: { include: { category: true } },
@@ -38,14 +45,14 @@ export class CalculationRepository implements ICalculationRepository {
     return CalculationMapper.toDomainArray(calculations);
   }
 
-  /** Only DRAFT calculations may be modified — not yet reachable from the API (B.2 stubs update/delete as 501). */
+  /** Only DRAFT calculations may be modified. */
   async update(id: string, data: Partial<CalculationRecord>): Promise<CalculationRecord> {
     const current = await this.prisma.calculation.findUnique({ where: { id } });
     if (!current) {
-      throw new Error('Calculation not found');
+      throw new CalculationNotFoundException(id);
     }
     if (current.status !== 'DRAFT') {
-      throw new Error(`Cannot update ${current.status} calculation`);
+      throw new InvalidCalculationStatusException(current.status, 'update');
     }
 
     const updated = await this.prisma.calculation.update({
@@ -62,14 +69,14 @@ export class CalculationRepository implements ICalculationRepository {
     return CalculationMapper.toDomain(updated);
   }
 
-  /** Only DRAFT calculations may be deleted — not yet reachable from the API. */
+  /** Only DRAFT calculations may be deleted. */
   async delete(id: string): Promise<void> {
     const current = await this.prisma.calculation.findUnique({ where: { id } });
     if (!current) {
-      throw new Error('Calculation not found');
+      throw new CalculationNotFoundException(id);
     }
     if (current.status !== 'DRAFT') {
-      throw new Error(`Cannot delete ${current.status} calculation`);
+      throw new InvalidCalculationStatusException(current.status, 'delete');
     }
 
     await this.prisma.calculation.delete({ where: { id } });

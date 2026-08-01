@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { CalculationRepository } from '../../../src/infrastructure/persistence/repositories/CalculationRepository';
 import { getPrismaClient, disconnectPrisma } from '../../../src/infrastructure/config/database';
+import {
+  CalculationNotFoundException,
+  InvalidCalculationStatusException,
+} from '../../../src/application/exceptions/ApplicationException';
 
 describe('CalculationRepository - Integration', () => {
   let calcRepo: CalculationRepository;
@@ -153,12 +157,14 @@ describe('CalculationRepository - Integration', () => {
       });
 
       await expect(calcRepo.update('calc_test_5', { totalPrice: 50 })).rejects.toThrow(
-        'Cannot update COMPLETED calculation'
+        InvalidCalculationStatusException
       );
     });
 
     test('should reject updating a calculation that does not exist', async () => {
-      await expect(calcRepo.update('calc_missing', {})).rejects.toThrow('Calculation not found');
+      await expect(calcRepo.update('calc_missing', {})).rejects.toThrow(
+        CalculationNotFoundException
+      );
     });
   });
 
@@ -194,7 +200,13 @@ describe('CalculationRepository - Integration', () => {
         },
       });
 
-      await expect(calcRepo.delete('calc_test_7')).rejects.toThrow('Cannot delete SUBMITTED calculation');
+      await expect(calcRepo.delete('calc_test_7')).rejects.toThrow(
+        InvalidCalculationStatusException
+      );
+    });
+
+    test('should reject deleting a calculation that does not exist', async () => {
+      await expect(calcRepo.delete('calc_missing')).rejects.toThrow(CalculationNotFoundException);
     });
   });
 
