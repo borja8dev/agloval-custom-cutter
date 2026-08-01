@@ -30,43 +30,23 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const calculationResult = calculator.calculate(request.requestedPieces);
     const totalPrice = calculationResult.boardsNeeded * product.pricePerUnit;
 
-    const response: CalculationResponseDTO = {
-      id: this.generateId(),
-      product: {
-        id: product.id,
-        name: product.name,
-        categoryName: product.categoryName,
-      },
-      board: {
-        width: product.standardWidth,
-        height: product.standardHeight,
-        thickness: product.thickness,
-        area: calculationResult.boardArea,
-      },
+    // Quotes are valid 30 days — a business rule, decided here (application
+    // layer), not buried in the persistence mapper.
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const saved = await this.calculationRepository.save({
+      productId: product.id,
       requestedPieces: request.requestedPieces,
-      calculation: {
-        totalAreaNeeded: calculationResult.totalAreaNeeded,
-        boardsNeeded: calculationResult.boardsNeeded,
-        wastePercentage: calculationResult.wastePercentage,
-        pieceCount: calculationResult.pieceCount,
-        averagePieceSize: calculationResult.averagePieceSize,
-      },
-      pricing: {
-        pricePerBoard: product.pricePerUnit,
-        boardsNeeded: calculationResult.boardsNeeded,
-        totalPrice,
-        currency: product.currency,
-      },
-      metadata: {
-        calculatedAt: new Date().toISOString(),
-        validUntilDays: 30,
-        status: 'DRAFT',
-      },
-    };
+      totalAreaNeeded: calculationResult.totalAreaNeeded,
+      boardsUsed: calculationResult.boardsNeeded,
+      pricePerBoard: product.pricePerUnit,
+      totalPrice,
+      userId: request.userId,
+      status: 'DRAFT',
+      expiresAt,
+    });
 
-    // TODO (Phase B.2): await this.calculationRepository.save(...)
-
-    return response;
+    return this.mapToDTOFromEntity(saved);
   }
 
   async getCalculation(calculationId: string): Promise<CalculationResponseDTO> {
@@ -127,9 +107,5 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const usedArea = boardsUsed * boardArea;
     const waste = usedArea - totalAreaNeeded;
     return (waste / usedArea) * 100;
-  }
-
-  private generateId(): string {
-    return `calc_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }

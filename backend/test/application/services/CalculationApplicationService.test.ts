@@ -26,10 +26,36 @@ describe('CalculationApplicationService', () => {
       }),
       findAll: jest.fn(),
       findByCategory: jest.fn(),
+      search: jest.fn(),
     };
 
+    // Echoes back what calculate() actually computed, as a real repository
+    // would after persisting it — mapToDTOFromEntity() rebuilds the response
+    // from this, so the mock needs to be a believable full CalculationRecord.
     mockCalculationRepo = {
-      save: jest.fn().mockResolvedValue({ id: 'calc_123' }),
+      save: jest.fn().mockImplementation((data: Partial<CalculationRecord>): Promise<CalculationRecord> =>
+        Promise.resolve({
+          id: 'calc_123',
+          productId: data.productId!,
+          requestedPieces: data.requestedPieces!,
+          totalAreaNeeded: data.totalAreaNeeded!,
+          boardsUsed: data.boardsUsed!,
+          pricePerBoard: data.pricePerBoard!,
+          totalPrice: data.totalPrice!,
+          status: data.status ?? 'DRAFT',
+          userId: data.userId,
+          createdAt: new Date(),
+          expiresAt: data.expiresAt,
+          product: {
+            id: 'prod_1',
+            name: 'Melamina Blanca 300x200',
+            standardWidth: 300,
+            standardHeight: 200,
+            thickness: 18,
+            category: { name: 'Melamina' },
+          },
+        })
+      ),
       findById: jest.fn(),
       findByUserId: jest.fn(),
       update: jest.fn(),
@@ -66,6 +92,7 @@ describe('CalculationApplicationService', () => {
         findById: jest.fn().mockResolvedValue(null),
         findAll: jest.fn(),
         findByCategory: jest.fn(),
+        search: jest.fn(),
       };
 
       const serviceNotFound = new CalculationApplicationService(mockRepoNotFound, mockCalculationRepo);

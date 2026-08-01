@@ -1,45 +1,48 @@
 import 'dotenv/config';
 import { createExpressApp } from './infrastructure/config/express';
 import { CalculationApplicationService } from './application/services/CalculationApplicationService';
-import { IProductRepository, ICalculationRepository } from './application/ports/out/CalculationPersistence';
-import { IProductUseCase } from './application/ports/in/ProductUseCase';
+import { ProductUseCaseAdapter } from './application/services/ProductUseCaseAdapter';
+import { ProductRepository } from './infrastructure/persistence/repositories/ProductRepository';
+import { CalculationRepository } from './infrastructure/persistence/repositories/CalculationRepository';
+import { getPrismaClient, disconnectPrisma, healthCheck } from './infrastructure/config/database';
 
-/**
- * TODO (Phase B.3): replace with real Prisma repositories. save()/update()
- * can't trivially satisfy their non-nullable CalculationRecord return type
- * with a stub, so they throw instead of faking a record.
- */
-const productRepository: IProductRepository = {
-  findById: async () => null,
-  findAll: async () => [],
-  findByCategory: async () => [],
-};
+async function main() {
+  const dbHealth = await healthCheck();
+  if (!dbHealth.healthy) {
+    console.error('Database connection failed:', dbHealth.message);
+    process.exit(1);
+  }
+  console.log(dbHealth.message);
 
-const calculationRepository: ICalculationRepository = {
-  save: async () => {
-    throw new Error('Not implemented until Phase B.3');
-  },
-  findById: async () => null,
-  findByUserId: async () => [],
-  update: async () => {
-    throw new Error('Not implemented until Phase B.3');
-  },
-  delete: async () => {},
-};
+  const prisma = getPrismaClient();
 
-const productUseCase: IProductUseCase = {
-  getAll: async () => [],
-  getById: async () => null,
-  search: async () => [],
-};
+  const productRepository = new ProductRepository(prisma);
+  const calculationRepository = new CalculationRepository(prisma);
 
-const calculationService = new CalculationApplicationService(productRepository, calculationRepository);
+  const calculationService = new CalculationApplicationService(productRepository, calculationRepository);
+  const productUseCase = new ProductUseCaseAdapter(productRepository);
 
-const app = createExpressApp(calculationService, productUseCase);
+  const app = createExpressApp(calculationService, productUseCase);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  const shutdown = async (signal: string) => {
+    console.log(`\n${signal} received, shutting down gracefully...`);
+    server.close();
+    await disconnectPrisma();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+}
+
+main().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
