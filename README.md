@@ -192,7 +192,7 @@ This project is built iteratively in phases:
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **A** | Setup + Domain layer + Database | In progress — schema & seed done, `CuttingCalculator` domain service next |
+| **A** | Setup + Domain layer + Database | **Done** — tagged `v0.1.0` |
 | **B** | Backend API + Error handling | Not started |
 | **C** | Frontend UI + Integration | Not started |
 | **D** | Testing + Documentation + Release | Not started |
@@ -209,7 +209,7 @@ Each phase is tagged in Git with semantic versioning.
 - **Integration Tests (API):** Full endpoints with database
 - **E2E Tests (UI):** Critical user flows
 
-No tests exist yet — the testing frameworks (Jest, React Testing Library, Cypress) are configured, but the calculation engine they'd cover ships in Phase A.2.
+`CuttingCalculator` (domain layer) has 32 unit tests, 100% statement coverage. API and E2E suites ship in Phases B and C.
 
 **Target Coverage:** >70% backend, critical flows for E2E
 

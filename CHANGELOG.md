@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target: v0.1.0 (Phase A — Setup + Domain layer + Database). Tagged once the
-`CuttingCalculator` domain service and its initial tests land.
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+### Security
+
+## [0.1.0] - 2026-08-01
+
+Phase A — Setup + Domain layer + Database, complete.
 
 ### Added
 - Initial project structure and monorepo scaffold (frontend + backend)
@@ -19,13 +30,9 @@ Target: v0.1.0 (Phase A — Setup + Domain layer + Database). Tagged once the
 - Prisma schema: Category, Product, Calculation, User models with indexes and migration-mapping notes
 - Database seed script with 3 categories and 10 fictitious products
 - Root README with project overview, quick start, and architecture rationale
+- `CuttingCalculator` domain service: pure, zero-dependency board/waste calculation logic
+- Domain exceptions (`InvalidPieceException`, `EmptyPiecesListException`, `InvalidBoardDimensionsException`, `InsufficientBoardAreaException`)
+- 32 unit tests for `CuttingCalculator` (100% statement coverage on the service)
 
-### Changed
-
-### Fixed
-
-### Removed
-
-### Security
-
-[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/commits/main
+[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.1.0
