@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: v0.1.0 (Phase A — Setup + Domain layer + Database). Tagged once the
+`CuttingCalculator` domain service and its initial tests land.
+
 ### Added
-- Project initialization and scaffolding
+- Initial project structure and monorepo scaffold (frontend + backend)
 - Configuration files (TypeScript, ESLint, Prettier, Jest)
 - Hexagonal architecture setup for backend
 - Docker Compose configuration for PostgreSQL
@@ -25,13 +28,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## [0.1.0] - 2026-08-01
-
-### Added
-- Initial project structure
-- Documentation (CLAUDE.md, README.md, API.md draft)
-- Development environment configuration
-- Monorepo with separated frontend and backend
-
-[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.1.0
+[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/commits/main
