@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id   String @id @default(cuid())
+  name String @unique
+
+  products Product[]
+
+  // MIGRATION: If BD real ya tiene categorías, mapear por name
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Standard board dimensions
+  standardWidth  Int // cm
+  standardHeight Int // cm
+  thickness      Int // mm
+
+  // Cutting machine constraints (validated in domain, stored for reference)
+  minWidth  Int? // cm
+  minHeight Int? // cm
+  maxWidth  Int? // cm
+  maxHeight Int? // cm
+
+  // Pricing
+  pricePerUnit Decimal @db.Decimal(10, 2) // € per board unit
+  pricePerM2   Decimal? @db.Decimal(10, 2) // alternative pricing
+  currency     String  @default("EUR")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calculations Calculation[]
+
+  @@index([categoryId])
+  // MIGRATION: If BD real tiene tabla "productos", mapear:
+  // - name → producto.nombre
+  // - pricePerUnit → producto.precio_unitario
+  // - standardWidth → producto.ancho_estandar
+  // MIGRATION: Si BD real usa centavos (integer), convertir Decimal
+  // MIGRATION: Full-text search (name, description) is a Phase B/C concern —
+  // @@fulltext is MySQL/MongoDB-only in Prisma, unsupported on PostgreSQL.
+  // Add a GIN index (pg_trgm or to_tsvector) via raw SQL migration when needed.
+}
+
+model Calculation {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  // User input: array of { width, height } in cm
+  requestedPieces Json
+
+  // Calculation output
+  totalAreaNeeded Decimal @db.Decimal(10, 3) // m²
+  boardsUsed      Decimal @db.Decimal(6, 3) // e.g. 1.2 = 1 board + 20% of another
+  pricePerBoard   Decimal @db.Decimal(10, 2) // price captured at calculation time
+  totalPrice      Decimal @db.Decimal(10, 2)
+
+  status String @default("DRAFT") // DRAFT, SUBMITTED, COMPLETED
+
+  userId String? // null while guest; auth lands in Phase B
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // quote validity window, e.g. 30 days
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  // MIGRATION: If BD real tiene tabla "presupuestos", mapear:
+  // - requestedPieces → presupuesto.piezas_solicitadas (JSON)
+  // - totalPrice → presupuesto.precio_total
+  // MIGRATION: totalAreaNeeded should be derivable from requestedPieces
+  // MIGRATION: Storing pricePerBoard enables audit (what was the price 3 months ago?)
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
+  createdAt DateTime @default(now())
+
+  // MIGRATION: Scaffolding only — auth ships in Phase B.
+  // Until then, every Calculation.userId is null (all requests are guests).
+}
