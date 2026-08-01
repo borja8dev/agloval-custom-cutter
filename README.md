@@ -6,6 +6,10 @@ A web solution that allows customers to purchase wood boards in custom dimension
 
 **Status:** In Development | **Current Version:** v0.1.0
 
+![Status](https://img.shields.io/badge/status-in%20development-yellow)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 ---
 
 ## The Problem
@@ -49,7 +53,7 @@ An interactive calculator where:
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - npm 9+
 - Docker & Docker Compose (for PostgreSQL)
 - Git
@@ -61,14 +65,17 @@ An interactive calculator where:
 git clone https://github.com/borja8dev/agloval-custom-cutter.git
 cd agloval-custom-cutter
 
-# 2. Install dependencies
+# 2. Install dependencies (root has no workspaces yet — install each package)
 npm install
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
 
 # 3. Start PostgreSQL (Docker)
 docker-compose up -d
 
 # 4. Setup database (migrations + seeding)
 cd backend
+cp .env.example .env
 npx prisma migrate dev
 npm run seed
 cd ..
@@ -105,52 +112,47 @@ npm run coverage
 
 ```
 agloval-custom-cutter/
+├── README.md                    # This file
 ├── frontend/                    # React application
 │   ├── src/
-│   │   ├── pages/              # Page components
-│   │   ├── components/         # Reusable components
-│   │   ├── context/            # State management
-│   │   ├── services/           # API communication
-│   │   ├── hooks/              # Custom React hooks
-│   │   └── utils/              # Utilities & constants
+│   │   ├── pages/               # Page components
+│   │   ├── components/          # Reusable components
+│   │   ├── context/             # State management
+│   │   ├── services/            # API communication
+│   │   ├── hooks/                # Custom React hooks
+│   │   └── utils/                # Utilities & constants
 │   ├── public/
 │   └── package.json
 │
 ├── backend/                     # Node.js/Express API
 │   ├── src/
-│   │   ├── domain/             # Business logic (zero dependencies)
-│   │   │   ├── entities/       # Data models
-│   │   │   ├── services/       # Domain services
-│   │   │   └── exceptions/     # Custom exceptions
-│   │   ├── application/        # Use cases & ports
-│   │   │   ├── ports/          # Interfaces
-│   │   │   ├── services/       # Application services
-│   │   │   └── dto/            # Request/response objects
-│   │   ├── infrastructure/     # Adapters (Express, Prisma)
-│   │   │   ├── web/            # Controllers & routes
-│   │   │   ├── persistence/    # Database repositories
-│   │   │   ├── config/         # Configuration
-│   │   │   └── seed/           # Data seeding
-│   │   └── server.ts           # Express entry point
-│   ├── test/                   # Test suites
+│   │   ├── domain/              # Business logic (zero dependencies)
+│   │   │   ├── entities/        # Data models
+│   │   │   ├── services/        # Domain services
+│   │   │   └── exceptions/      # Custom exceptions
+│   │   ├── application/         # Use cases & ports
+│   │   │   ├── ports/           # Interfaces
+│   │   │   ├── services/        # Application services
+│   │   │   └── dto/              # Request/response objects
+│   │   ├── infrastructure/      # Adapters (Express, Prisma)
+│   │   │   ├── web/             # Controllers & routes
+│   │   │   ├── persistence/     # Database repositories
+│   │   │   ├── config/          # Configuration
+│   │   │   └── seed/             # Data seeding
+│   │   └── server.ts            # Express entry point
+│   ├── test/                    # Test suites
 │   ├── prisma/
-│   │   ├── schema.prisma       # Database schema
-│   │   └── migrations/         # Migration files
+│   │   ├── schema.prisma        # Database schema
+│   │   ├── seed.ts              # Dev seed data
+│   │   └── migrations/          # Migration files
 │   └── package.json
 │
-├── docs/                        # Documentation
-│   ├── README.md               # This file
-│   ├── ARCHITECTURE.md         # Architecture diagrams & rationale
-│   ├── API.md                  # API endpoints documentation
-│   ├── MIGRATION_GUIDE.md      # Guide for integrating real database
-│   └── DEPLOYMENT.md           # Deployment instructions
+├── docs/                        # Additional documentation
+│   └── 2_CLAUDE_cutter.md       # Project constitution / dev guidelines
 │
-├── docker-compose.yml          # PostgreSQL + pgAdmin
-├── CLAUDE.md                   # Development guidelines
+├── docker-compose.yml           # PostgreSQL + pgAdmin
 └── .gitignore
 ```
-
-For detailed development guidelines, see [CLAUDE.md](./CLAUDE.md).
 
 ---
 
@@ -178,69 +180,9 @@ The backend follows hexagonal architecture for maintainability and scalability:
 
 ---
 
-## API Endpoints
+## API
 
-### Calculate Custom Cutting
-
-```bash
-POST /api/calculations
-Content-Type: application/json
-
-{
-  "productId": "prod_123",
-  "requestedPieces": [
-    {"width": 200, "height": 100},
-    {"width": 200, "height": 100},
-    {"width": 250, "height": 120}
-  ]
-}
-
-Response (201):
-{
-  "id": "calc_456",
-  "productId": "prod_123",
-  "productName": "Melamina Blanca",
-  "standardDimensions": {"width": 300, "height": 200},
-  "areaCalculation": {
-    "totalAreaNeeded": 0.96,
-    "boardArea": 6.0,
-    "boardsNeeded": 1.2
-  },
-  "pricing": {
-    "pricePerBoard": 100,
-    "totalPrice": 120,
-    "currency": "EUR"
-  },
-  "status": "DRAFT",
-  "createdAt": "2026-08-20T14:30:00Z"
-}
-```
-
-### Get Products
-
-```bash
-GET /api/products?page=1&limit=10
-
-Response (200):
-{
-  "data": [
-    {
-      "id": "prod_123",
-      "name": "Melamina Blanca",
-      "standardDimensions": {"width": 300, "height": 200},
-      "thickness": 18,
-      "pricePerUnit": 100.50,
-      "currency": "EUR"
-    },
-    ...
-  ],
-  "total": 45,
-  "page": 1,
-  "limit": 10
-}
-```
-
-For complete API documentation, see [docs/API.md](./docs/API.md).
+The API surface (Express controllers, routes, error handling) ships in **Phase B** and isn't implemented yet. It will be documented here once it exists.
 
 ---
 
@@ -248,12 +190,12 @@ For complete API documentation, see [docs/API.md](./docs/API.md).
 
 This project is built iteratively in phases:
 
-| Phase | Focus | Deliverable |
-|-------|-------|-------------|
-| **A** | Setup + Domain layer + Database | v0.1.0 |
-| **B** | Backend API + Error handling | v0.2.0 |
-| **C** | Frontend UI + Integration | v0.3.0 |
-| **D** | Testing + Documentation + Release | v1.0.0 |
+| Phase | Focus | Status |
+|-------|-------|--------|
+| **A** | Setup + Domain layer + Database | In progress — schema & seed done, `CuttingCalculator` domain service next |
+| **B** | Backend API + Error handling | Not started |
+| **C** | Frontend UI + Integration | Not started |
+| **D** | Testing + Documentation + Release | Not started |
 
 Each phase is tagged in Git with semantic versioning.
 
@@ -267,42 +209,9 @@ Each phase is tagged in Git with semantic versioning.
 - **Integration Tests (API):** Full endpoints with database
 - **E2E Tests (UI):** Critical user flows
 
-### Running Tests
-
-```bash
-# All tests with coverage
-npm test -- --coverage
-
-# Watch mode (auto-rerun on file changes)
-npm run test:watch
-
-# Specific test file
-npm run test:backend -- CuttingCalculator.test.ts
-```
+No tests exist yet — the testing frameworks (Jest, React Testing Library, Cypress) are configured, but the calculation engine they'd cover ships in Phase A.2.
 
 **Target Coverage:** >70% backend, critical flows for E2E
-
----
-
-## Deployment
-
-### Frontend (Vercel)
-
-```bash
-# Automatic CI/CD on push to main
-# Manual deployment:
-npm run deploy:frontend
-```
-
-### Backend (Render)
-
-```bash
-# Automatic CI/CD on push to main
-# Manual deployment:
-npm run deploy:backend
-```
-
-See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for detailed setup.
 
 ---
 
@@ -344,7 +253,7 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for detailed setup.
 
 ## Roadmap
 
-### v1.0 (Current)
+### v1.0 (Current target)
 - Core calculation engine
 - API endpoints
 - React UI
@@ -373,20 +282,6 @@ This is a personal portfolio project. If you have feedback or suggestions:
 
 ---
 
-## Performance
-
-- **API Response Time:** <200ms (p95) for most endpoints
-- **Database Queries:** Indexed on frequently accessed fields
-- **Frontend:** Lazy loading, code splitting, optimized re-renders
-- **Deployment:** CDN-served frontend, cached API responses
-
-Tested with:
-- 100+ concurrent users
-- 1000+ products in catalog
-- Complex calculations with 50+ pieces
-
----
-
 ## Troubleshooting
 
 ### "Port 5000 already in use"
@@ -398,16 +293,14 @@ kill -9 <PID>
 ### "Database connection refused"
 ```bash
 docker-compose up -d
-npx prisma db push
+npx prisma migrate dev
 npm run seed
 ```
 
 ### "Frontend can't reach backend"
 - Verify backend is running: `npm run dev:backend`
 - Check `REACT_APP_API_URL` in `frontend/.env`
-- Check CORS settings in `backend/.env`
-
-For more issues, see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) (when added).
+- Check `CORS_ORIGIN` in `backend/.env`
 
 ---
 
@@ -434,13 +327,4 @@ MIT - See [LICENSE](./LICENSE) for details.
 
 ---
 
-## Status Badge
-
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-65%25-yellow)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-
----
-
-**See [CHANGELOG.md](./docs/CHANGELOG.md) for version history.**
+**See [CHANGELOG.md](./CHANGELOG.md) for version history.**

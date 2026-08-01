@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hexagonal architecture setup for backend
 - Docker Compose configuration for PostgreSQL
 - Documentation structure
+- Prisma schema: Category, Product, Calculation, User models with indexes and migration-mapping notes
+- Database seed script with 3 categories and 10 fictitious products
+- Root README with project overview, quick start, and architecture rationale
 
 ### Changed
 
