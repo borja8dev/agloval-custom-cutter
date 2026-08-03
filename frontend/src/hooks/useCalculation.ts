@@ -13,7 +13,8 @@ interface UseCalculationReturn {
   addPiece: (piece: Piece) => void;
   removePiece: (index: number) => void;
   updatePiece: (index: number, piece: Piece) => void;
-  calculate: () => Promise<void>;
+  calculate: () => Promise<CalculationResponse | null>;
+  loadFromHistory: (product: Product, calc: CalculationResponse) => void;
   reset: () => void;
   clearError: () => void;
 }
@@ -47,15 +48,15 @@ export function useCalculation(): UseCalculationReturn {
     });
   };
 
-  const calculate = async () => {
+  const calculate = async (): Promise<CalculationResponse | null> => {
     if (!selectedProduct) {
       setError('Please select a product');
-      return;
+      return null;
     }
 
     if (pieces.length === 0) {
       setError('Please add at least one piece');
-      return;
+      return null;
     }
 
     try {
@@ -70,17 +71,20 @@ export function useCalculation(): UseCalculationReturn {
 
       const result = await createCalculation(request);
       setCalculation(result);
-
-      try {
-        localStorage.setItem('lastCalculation', JSON.stringify(result));
-      } catch {
-        // Persistence is a non-critical nicety (e.g. Safari private mode blocks it)
-      }
+      return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Calculation failed. Please try again.');
+      return null;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadFromHistory = (product: Product, calc: CalculationResponse) => {
+    setSelectedProduct(product);
+    setPieces(calc.requestedPieces);
+    setCalculation(calc);
+    setError(null);
   };
 
   const reset = () => {
@@ -106,6 +110,7 @@ export function useCalculation(): UseCalculationReturn {
     removePiece,
     updatePiece,
     calculate,
+    loadFromHistory,
     reset,
     clearError
   };
