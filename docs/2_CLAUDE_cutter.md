@@ -543,12 +543,12 @@ Full reference: `docs/TROUBLESHOOTING.md`.
 - Export/share UI
 - Cypress E2E suite (4 specs)
 
-**Phase D:** Documentation + Deployment config — **In Progress**
-- Close the Phase C documentation gap (CHANGELOG, README, this file)
-- Missing docs: `DEPLOYMENT.md`, `TROUBLESHOOTING.md`, `ERD.md`
+**Phase D:** Documentation + Deployment config — **Done, tagged `v1.0.0`**
+- Closed the Phase C documentation gap (CHANGELOG, README, this file)
+- Added missing docs: `DEPLOYMENT.md`, `TROUBLESHOOTING.md`, `ERD.md`
 - CI (GitHub Actions: lint + test, no deploy job yet)
 - `vercel.json` / `render.yaml` config scaffolds — no live deploy attempted this phase
-- Tag `v0.4.0` (not `v1.0.0` — keeping the project's existing `0.x` increment-per-phase convention)
+- Tagged `v1.0.0`, not `v0.4.0` — the project's own README Roadmap had already declared v1.0 as "current target" with 5 criteria (calc engine, API, DB persistence, testing, React UI), all satisfied once Phase C shipped. Live deployment and auth remain out of scope, moved to the v1.1+ roadmap.
 
 ---
 

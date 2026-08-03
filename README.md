@@ -4,10 +4,10 @@
 
 A web solution that allows customers to purchase wood boards in custom dimensions instead of only standard sizes. The system calculates how much of the board is used and adjusts pricing automatically.
 
-**Status:** In Development | **Current Version:** v0.3.0
+**Status:** MVP Complete | **Current Version:** v1.0.0
 
-![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Status](https://img.shields.io/badge/status-MVP%20complete-brightgreen)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Not deployed yet — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the runbook.
@@ -236,7 +236,7 @@ This project is built iteratively in phases:
 | **A** | Setup + Domain layer + Database | **Done** — tagged `v0.1.0` |
 | **B** | Backend API + Error handling | **Done** — tagged `v0.2.0` |
 | **C** | Frontend UI + Integration | **Done** — tagged `v0.3.0` |
-| **D** | Documentation + Deployment config | In Progress |
+| **D** | Documentation + Deployment config | **Done** — tagged `v1.0.0` |
 
 Each phase is tagged in Git with semantic versioning.
 
@@ -298,16 +298,16 @@ Full architectural decision log: [docs/DECISIONS.md](./docs/DECISIONS.md).
 
 ## Roadmap
 
-### v1.0 (Current target)
+### v1.0 — done
 - [x] Core calculation engine
 - [x] API endpoints
 - [x] Database persistence
 - [x] Testing framework
 - [x] React UI
-- [x] Documentation (this phase)
-- [ ] Live deployment (config is ready — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — not executed yet)
+- [x] Documentation
 
 ### v1.1+ (Future)
+- Live deployment (config is ready — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — not executed yet)
 - User accounts & authentication
 - Order history & saved quotes
 - PDF quote generation

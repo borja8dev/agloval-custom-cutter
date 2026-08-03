@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.0.0] - 2026-08-04
+
+Phase D — Documentation + deployment config, complete. MVP feature-complete: the root README's own Roadmap had declared v1.0 as "current target" with 5 criteria (calculation engine, API, DB persistence, testing, React UI) — all satisfied as of this release. Live deployment and auth remain future work (see `v1.1+` in the README Roadmap).
+
+### Added
+- `docs/DEPLOYMENT.md`: Vercel (frontend) + Render (backend) deployment runbook
+- `docs/TROUBLESHOOTING.md`: expanded common local-dev issues reference
+- `docs/ERD.md`: Mermaid schema diagram generated from the real `schema.prisma`
+- `vercel.json` and `render.yaml`: deployment config scaffolds (no live deploy executed)
+- `.github/workflows/test.yml`: CI running lint + backend tests (real Postgres service container) + frontend tests on push/PR to `main`
+
+### Fixed
+- `CHANGELOG.md`/`README.md` hadn't been updated for the already-tagged Phase C (`v0.3.0`) release
+- Stale docs across `README.md`, `docs/2_CLAUDE_cutter.md`, and `frontend/README.md`: `REACT_APP_*` env var naming (this is a Vite app, requires `VITE_*`), a documented Context API that was never implemented (state lives in hooks), and an unused `JWT_SECRET` env var (no auth exists in this codebase)
+
 ## [0.3.0] - 2026-08-04
 
 Phase C — Frontend + Integration, complete.
@@ -77,7 +92,8 @@ Phase A — Setup + Domain layer + Database, complete.
 - Domain exceptions (`InvalidPieceException`, `EmptyPiecesListException`, `InvalidBoardDimensionsException`, `InsufficientBoardAreaException`)
 - 32 unit tests for `CuttingCalculator` (100% statement coverage on the service)
 
-[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/borja8dev/agloval-custom-cutter/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/borja8dev/agloval-custom-cutter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/borja8dev/agloval-custom-cutter/releases/tag/v0.1.0
