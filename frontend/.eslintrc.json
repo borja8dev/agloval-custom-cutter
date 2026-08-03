@@ -28,6 +28,6 @@
       "error",
       { "argsIgnorePattern": "^_" }
     ],
-    "@typescript-eslint/explicit-function-return-types": "warn"
+    "@typescript-eslint/explicit-function-return-type": "off"
   }
 }
