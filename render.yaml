@@ -1,0 +1,23 @@
+databases:
+  - name: agloval-custom-cutter-db
+    databaseName: agloval_cutting
+    user: agloval
+    plan: free # verify current plan slugs in the Render dashboard — names/tiers change over time
+
+services:
+  - type: web
+    name: agloval-custom-cutter-backend
+    runtime: node
+    rootDir: backend
+    plan: free # same caveat as above
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agloval-custom-cutter-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        sync: false # set manually once the Vercel frontend URL is known — see docs/DEPLOYMENT.md
