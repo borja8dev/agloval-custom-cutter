@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Piece, CalculationResponse, CalculationRequest, Product } from '../types';
-import { createCalculation } from '../services/api';
+import { createCalculation, getErrorMessage } from '../services/api';
 
 interface UseCalculationReturn {
   selectedProduct: Product | null;
@@ -73,7 +73,7 @@ export function useCalculation(): UseCalculationReturn {
       setCalculation(result);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Calculation failed. Please try again.');
+      setError(getErrorMessage(err, 'Calculation failed. Please try again.'));
       return null;
     } finally {
       setIsLoading(false);

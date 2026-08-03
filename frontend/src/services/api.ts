@@ -6,6 +6,18 @@ import {
   ApiResponse
 } from '../types';
 
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const backendMessage = (err.response?.data as ApiResponse<never> | undefined)?.error
+      ?.message;
+    if (backendMessage) {
+      return backendMessage;
+    }
+  }
+
+  return err instanceof Error ? err.message : fallback;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const apiClient: AxiosInstance = axios.create({

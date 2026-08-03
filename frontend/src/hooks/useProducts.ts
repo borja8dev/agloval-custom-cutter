@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Product } from '../types';
-import { getProducts, searchProducts } from '../services/api';
+import { getProducts, searchProducts, getErrorMessage } from '../services/api';
 
 interface UseProductsReturn {
   products: Product[];
@@ -22,7 +22,7 @@ export function useProducts(): UseProductsReturn {
         const data = await getProducts(50);
         setProducts(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch products');
+        setError(getErrorMessage(err, 'Failed to fetch products'));
       } finally {
         setIsLoading(false);
       }
