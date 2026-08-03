@@ -6,12 +6,12 @@ React 18 application with TypeScript for the custom cutting calculator UI.
 
 ```
 src/
-├── pages/           # Page components
+├── pages/           # Page components (CuttingCalculator)
 ├── components/      # Reusable UI components
-├── context/         # State management
-├── services/        # API communication
-├── hooks/           # Custom React hooks
-├── utils/           # Utilities and constants
+├── hooks/           # State management lives here (useProducts, useCalculation,
+│                     # useCalculationHistory, useLocalStorage) — no Context/Redux
+├── services/        # API communication (api.ts) + export/share (export.ts)
+├── utils/           # Formatters
 ├── styles/          # Tailwind and global styles
 └── test/            # Test setup and utilities
 ```

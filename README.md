@@ -4,11 +4,13 @@
 
 A web solution that allows customers to purchase wood boards in custom dimensions instead of only standard sizes. The system calculates how much of the board is used and adjusts pricing automatically.
 
-**Status:** In Development | **Current Version:** v0.2.0
+**Status:** In Development | **Current Version:** v0.3.0
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+Not deployed yet — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the runbook.
 
 ---
 
@@ -41,10 +43,10 @@ An interactive calculator where:
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 18 + TypeScript + Tailwind CSS + shadcn/ui |
+| **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
 | **Backend** | Node.js + Express + TypeScript |
 | **Database** | PostgreSQL 15 + Prisma ORM |
-| **Testing** | Jest (backend) + React Testing Library (frontend) + Cypress (E2E) |
+| **Testing** | Jest (backend) + Vitest + React Testing Library (frontend) + Cypress (E2E) |
 | **Deployment** | Vercel (frontend) + Render (backend) |
 | **Architecture** | Hexagonal (Ports & Adapters) |
 
@@ -115,12 +117,12 @@ agloval-custom-cutter/
 ├── README.md                    # This file
 ├── frontend/                    # React application
 │   ├── src/
-│   │   ├── pages/               # Page components
+│   │   ├── pages/               # Page components (CuttingCalculator)
 │   │   ├── components/          # Reusable components
-│   │   ├── context/             # State management
-│   │   ├── services/            # API communication
-│   │   ├── hooks/                # Custom React hooks
-│   │   └── utils/                # Utilities & constants
+│   │   ├── hooks/                # State management (useProducts, useCalculation, useCalculationHistory, useLocalStorage)
+│   │   ├── services/            # API client (api.ts) + export/share (export.ts)
+│   │   └── utils/                # Formatters & helpers
+│   ├── cypress/                 # E2E specs (4 suites)
 │   ├── public/
 │   └── package.json
 │
@@ -153,11 +155,29 @@ agloval-custom-cutter/
 │   ├── API.md                   # Endpoint reference
 │   ├── ARCHITECTURE.md          # Hexagonal layering + rationale
 │   ├── MIGRATION_GUIDE.md       # Mapping to Agloval's real database
-│   └── DECISIONS.md             # Architectural decision log
+│   ├── DECISIONS.md             # Architectural decision log
+│   ├── DEPLOYMENT.md            # Vercel + Render deployment runbook
+│   ├── TROUBLESHOOTING.md       # Common local-dev issues
+│   └── ERD.md                   # Database schema diagram
 │
+├── .github/workflows/           # CI (lint + test on push/PR)
+├── vercel.json                  # Frontend deployment config
+├── render.yaml                  # Backend deployment config
 ├── docker-compose.yml           # PostgreSQL + pgAdmin
 └── .gitignore
 ```
+
+### Documentation
+
+| Doc | What it covers |
+|-----|-----------------|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Hexagonal layering, DTO/Record split, error-handling flow |
+| [docs/API.md](./docs/API.md) | Full endpoint reference with request/response examples |
+| [docs/MIGRATION_GUIDE.md](./docs/MIGRATION_GUIDE.md) | **How to hook this up to Agloval's real database** — the actual handoff document |
+| [docs/DECISIONS.md](./docs/DECISIONS.md) | ADR-style log of specific technical calls and why |
+| [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Vercel (frontend) + Render (backend) deployment runbook |
+| [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Common local-dev issues and fixes |
+| [docs/ERD.md](./docs/ERD.md) | Database schema diagram (Category, Product, Calculation, User) |
 
 ---
 
@@ -215,8 +235,8 @@ This project is built iteratively in phases:
 |-------|-------|--------|
 | **A** | Setup + Domain layer + Database | **Done** — tagged `v0.1.0` |
 | **B** | Backend API + Error handling | **Done** — tagged `v0.2.0` |
-| **C** | Frontend UI + Integration | Not started |
-| **D** | Testing + Documentation + Release | Not started |
+| **C** | Frontend UI + Integration | **Done** — tagged `v0.3.0` |
+| **D** | Documentation + Deployment config | In Progress |
 
 Each phase is tagged in Git with semantic versioning.
 
@@ -230,7 +250,9 @@ Each phase is tagged in Git with semantic versioning.
 - **Integration Tests (API):** Full endpoints with database
 - **E2E Tests (UI):** Critical user flows
 
-Backend has 131 tests across domain, application, and infrastructure layers (~98% statement coverage overall) — unit tests for `CuttingCalculator` and the application service, `supertest` integration tests for every controller against a real Express app, and repository integration tests against a real Postgres instance. E2E suites ship in Phase C once there's a UI to drive.
+Backend has 131 tests across domain, application, and infrastructure layers (~98% statement coverage overall) — unit tests for `CuttingCalculator` and the application service, `supertest` integration tests for every controller against a real Express app, and repository integration tests against a real Postgres instance.
+
+Frontend has 7 Vitest/React Testing Library test files across components, hooks, and services/utils, plus a 4-spec Cypress E2E suite covering the main calculation workflow, product selection, saved-calculation history, and responsive layout.
 
 **Target Coverage:** >70% backend, critical flows for E2E
 
@@ -252,10 +274,10 @@ Full architectural decision log: [docs/DECISIONS.md](./docs/DECISIONS.md).
 - Easy schema exploration
 - Future-proof for database changes
 
-### Why React + Context API (not Redux)?
-- Simpler for MVP
+### Why Custom Hooks (not Context API or Redux)?
+- Simpler for MVP — state (`useProducts`, `useCalculation`, `useCalculationHistory`) lives in hooks, no Context providers needed
 - Sufficient for this project scope
-- Can upgrade to Zustand/Redux if needed
+- Can upgrade to Context/Zustand/Redux if the component tree grows deep enough to need it
 
 ### Why Backend-only Calculations?
 - Single source of truth
@@ -281,7 +303,9 @@ Full architectural decision log: [docs/DECISIONS.md](./docs/DECISIONS.md).
 - [x] API endpoints
 - [x] Database persistence
 - [x] Testing framework
-- [ ] React UI
+- [x] React UI
+- [x] Documentation (this phase)
+- [ ] Live deployment (config is ready — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — not executed yet)
 
 ### v1.1+ (Future)
 - User accounts & authentication
@@ -307,23 +331,14 @@ This is a personal portfolio project. If you have feedback or suggestions:
 
 ## Troubleshooting
 
-### "Port 5000 already in use"
-```bash
-lsof -i :5000
-kill -9 <PID>
-```
-
-### "Database connection refused"
-```bash
-docker-compose up -d
-npx prisma migrate dev
-npm run seed
-```
+Quick fix for the most common local-dev snag:
 
 ### "Frontend can't reach backend"
 - Verify backend is running: `npm run dev:backend`
-- Check `REACT_APP_API_URL` in `frontend/.env`
+- Check `VITE_API_URL` in `frontend/.env`
 - Check `CORS_ORIGIN` in `backend/.env`
+
+Full reference (ports, DB/migrations, Prisma Client sync, Cypress flakiness): [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
 
 ---
 

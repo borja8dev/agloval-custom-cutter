@@ -14,10 +14,10 @@
 
 **Stack:**
 ```
-Frontend:   React 18 + TypeScript + Context API + Tailwind + shadcn/ui
+Frontend:   React 18 + TypeScript + Vite + Custom Hooks (no Context/Redux) + Tailwind
 Backend:    Node.js/Express + TypeScript (Hexagonal pattern)
 Database:   PostgreSQL + Prisma ORM
-Testing:    Jest (backend) + React Testing Library (frontend) + Cypress (e2e)
+Testing:    Jest (backend) + Vitest + React Testing Library (frontend) + Cypress (e2e)
 Deploy:     Vercel (frontend) + Render (backend)
 ```
 
@@ -28,37 +28,40 @@ Deploy:     Vercel (frontend) + Render (backend)
 ```
 agloval-custom-cutter/
 │
-├── frontend/                           # React app (port 3000)
+├── frontend/                           # React app (port 3000, Vite)
 │   ├── public/
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── ProductList.tsx         # Catálogo
-│   │   │   └── CuttingCalculator.tsx   # Main feature
+│   │   │   └── CuttingCalculator.tsx   # Main (and only) page — product selection lives here too
 │   │   ├── components/
 │   │   │   ├── ProductCard.tsx
 │   │   │   ├── MeasurementForm.tsx
-│   │   │   ├── AreaCalculator.tsx
+│   │   │   ├── PiecesList.tsx
+│   │   │   ├── AreaVisualizer.tsx
 │   │   │   ├── PriceDisplay.tsx
-│   │   │   └── CartPreview.tsx
-│   │   ├── context/
-│   │   │   ├── ProductContext.tsx
-│   │   │   └── CalculationContext.tsx
+│   │   │   ├── CartPreview.tsx
+│   │   │   ├── CalculationHistory.tsx
+│   │   │   ├── HistoryItem.tsx
+│   │   │   ├── ExportButton.tsx
+│   │   │   ├── ShareModal.tsx
+│   │   │   └── Alert.tsx
 │   │   ├── services/
 │   │   │   ├── api.ts                 # Axios instance (base URL to backend)
-│   │   │   ├── calculations.ts        # Frontend-side validations ONLY
-│   │   │   └── products.ts
-│   │   ├── hooks/
+│   │   │   └── export.ts              # Export/share calculation as text/link
+│   │   ├── hooks/                     # State management lives here — no Context/Redux
 │   │   │   ├── useProducts.ts
 │   │   │   ├── useCalculation.ts
+│   │   │   ├── useCalculationHistory.ts
 │   │   │   └── useLocalStorage.ts
 │   │   ├── utils/
-│   │   │   ├── validators.ts
-│   │   │   ├── formatters.ts
-│   │   │   └── constants.ts
+│   │   │   └── formatters.ts
+│   │   ├── types/
+│   │   │   └── index.ts
 │   │   ├── styles/
-│   │   │   └── globals.css             # Tailwind + shadcn/ui
+│   │   │   └── globals.css             # Tailwind
 │   │   ├── App.tsx
-│   │   └── index.tsx
+│   │   └── main.tsx                    # Vite entry point
+│   ├── cypress/                        # E2E specs (4 suites)
 │   ├── package.json
 │   └── tsconfig.json
 │
@@ -134,8 +137,14 @@ agloval-custom-cutter/
 │   ├── API.md                          # Endpoint reference
 │   ├── ARCHITECTURE.md                 # Diagrams + rationale
 │   ├── MIGRATION_GUIDE.md              # HOW TO SWITCH TO REAL BD (CRITICAL)
-│   └── DECISIONS.md                    # Why we chose X over Y
+│   ├── DECISIONS.md                    # Why we chose X over Y
+│   ├── DEPLOYMENT.md                   # Vercel + Render runbook
+│   ├── TROUBLESHOOTING.md              # Common local-dev issues
+│   └── ERD.md                          # Schema diagram
 │
+├── .github/workflows/test.yml          # CI: lint + backend + frontend tests
+├── vercel.json                         # Frontend deploy config (not yet deployed)
+├── render.yaml                         # Backend deploy config (not yet deployed)
 ├── docker-compose.yml                  # PostgreSQL + pgAdmin (local)
 ├── .gitignore
 ├── .env.example
@@ -410,16 +419,16 @@ npm run deploy:backend        # Render
 NODE_ENV=development
 PORT=5000
 DATABASE_URL="postgresql://user:password@localhost:5432/agloval_cutting_dev"
-JWT_SECRET="dev-secret-change-in-prod"
 CORS_ORIGIN="http://localhost:3000"
 LOG_LEVEL="debug"
 ```
+Note: no `JWT_SECRET` — auth doesn't exist yet (`jsonwebtoken` isn't even a dependency), see Known Limitations in the root README.
 
 ### frontend/.env
 ```
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_ENV=development
+VITE_API_URL=http://localhost:5000
 ```
+Vite only exposes env vars prefixed `VITE_` to client code — `REACT_APP_*` naming (Create React App convention) does not work here.
 
 **Never commit .env files.** Use .env.example as template.
 
@@ -431,7 +440,7 @@ REACT_APP_ENV=development
 2. **API design:** Check `docs/API.md`
 3. **Migration concern:** Read `docs/MIGRATION_GUIDE.md` (CRITICAL)
 4. **Code example:** Look at tests in `backend/test/`
-5. **Setup issue:** Check the Troubleshooting sections in the root and backend READMEs
+5. **Setup issue:** Check `docs/TROUBLESHOOTING.md` (full reference) or the short version in the root README
 6. **Design decision:** Read `docs/DECISIONS.md`
 
 ---
@@ -503,8 +512,10 @@ npm run seed  # Seed data
 
 ### "Frontend can't reach backend"
 - Check CORS_ORIGIN in backend/.env
-- Check REACT_APP_API_URL in frontend/.env
+- Check VITE_API_URL in frontend/.env
 - Ensure backend is running on correct port
+
+Full reference: `docs/TROUBLESHOOTING.md`.
 
 ---
 
@@ -525,17 +536,19 @@ npm run seed  # Seed data
 - 131 tests (unit + HTTP integration + DB integration)
 - Auth intentionally out of scope — see Known Limitations in the root README
 
-**Phase C:** Frontend + Integration
-- React components
-- Context state
-- API integration
-- E2E tests
+**Phase C:** Frontend + Integration — **Done, tagged `v0.3.0`**
+- React components + custom hooks (no Context/Redux — see Design Decisions)
+- API integration (Axios client)
+- localStorage-backed calculation history
+- Export/share UI
+- Cypress E2E suite (4 specs)
 
-**Phase D:** Polish + Release
-- Code refactors
-- All documentation
-- Deployment setup
-- Tag v1.0.0
+**Phase D:** Documentation + Deployment config — **In Progress**
+- Close the Phase C documentation gap (CHANGELOG, README, this file)
+- Missing docs: `DEPLOYMENT.md`, `TROUBLESHOOTING.md`, `ERD.md`
+- CI (GitHub Actions: lint + test, no deploy job yet)
+- `vercel.json` / `render.yaml` config scaffolds — no live deploy attempted this phase
+- Tag `v0.4.0` (not `v1.0.0` — keeping the project's existing `0.x` increment-per-phase convention)
 
 ---
 
