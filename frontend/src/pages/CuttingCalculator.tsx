@@ -11,6 +11,7 @@ import { AreaVisualizer } from '../components/AreaVisualizer';
 import { CartPreview } from '../components/CartPreview';
 import { CalculationHistory } from '../components/CalculationHistory';
 import { Alert } from '../components/Alert';
+import { ExportButton } from '../components/ExportButton';
 import { CalculationResponse } from '../types';
 
 export const CuttingCalculator: React.FC = () => {
@@ -69,25 +70,27 @@ export const CuttingCalculator: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-blue-600 text-white py-8">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+      <div className="bg-blue-600 text-white py-6 sm:py-8">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Calculadora de Corte Personalizado</h1>
-            <p className="text-blue-100">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
+              Calculadora de Corte Personalizado
+            </h1>
+            <p className="text-blue-100 text-sm sm:text-base">
               Calcula cuántos tableros necesitas para tus piezas personalizadas
             </p>
           </div>
 
           <button
             onClick={() => setView(view === 'calculator' ? 'history' : 'calculator')}
-            className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            className="self-start sm:self-auto bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
           >
             {view === 'calculator' ? `📋 Historial (${history.length})` : '← Volver a calcular'}
           </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
         {productsError && <Alert type="error" message={productsError} />}
 
         {error && <Alert type="error" message={error} onClose={clearError} />}
@@ -123,7 +126,7 @@ export const CuttingCalculator: React.FC = () => {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-8 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mt-6">
             <div>
               <h2 className="text-xl font-bold mb-4">1. Selecciona tablero</h2>
 
@@ -188,6 +191,7 @@ export const CuttingCalculator: React.FC = () => {
                 calculation={calculation}
                 isLoading={isLoading}
               />
+              {calculation && !isLoading && <ExportButton calculation={calculation} />}
             </div>
           </div>
         )}
