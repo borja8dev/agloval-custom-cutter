@@ -42,6 +42,19 @@ Calculates a cutting quote against a product's standard board and persists it.
 - `requestedPieces`: required, 1–100 pieces, each `{ width, height }` in cm, both positive and finite.
 - `userId`, `metadata`: optional. `userId` is stored as-is — there's no auth, so this is not verified against anything (see [Known Limitations](../README.md#known-limitations)).
 
+```bash
+curl -X POST http://localhost:5000/api/calculations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": "clv9t1a2k0001zzz9qqqqqqqq",
+    "requestedPieces": [
+      { "width": 200, "height": 100 },
+      { "width": 250, "height": 120 }
+    ],
+    "metadata": { "source": "web" }
+  }'
+```
+
 **Response `201`:**
 
 ```json
@@ -71,15 +84,29 @@ Calculates a cutting quote against a product's standard board and persists it.
 
 Fetches a calculation by id. `200` with the same shape as above, or `404 CALCULATION_NOT_FOUND`.
 
-### `GET /api/calculations?userId=&limit=`
+```bash
+curl http://localhost:5000/api/calculations/cmsals6ur0001ftexloh38wgc
+```
+
+### `GET /api/calculations?userId=&limit=&skip=`
 
 Lists calculations. **Currently always returns `401 UNAUTHORIZED`** — see [Known Limitations](../README.md#known-limitations). Not fixed as part of this phase; real auth is its own future scope.
+
+```bash
+curl "http://localhost:5000/api/calculations?userId=usr_123&limit=20&skip=0"
+```
 
 ### `PUT /api/calculations/:id`
 
 Recomputes a **DRAFT** calculation from a new set of pieces — re-runs the same domain calculation used on create, it does not accept raw totals from the client.
 
 **Body:** `{ "requestedPieces": [{ "width": 200, "height": 100 }] }`
+
+```bash
+curl -X PUT http://localhost:5000/api/calculations/cmsals6ur0001ftexloh38wgc \
+  -H "Content-Type: application/json" \
+  -d '{ "requestedPieces": [{ "width": 200, "height": 100 }] }'
+```
 
 **Response `200`:** same shape as `POST`, with `id`/`product` unchanged and `calculation`/`pricing` recomputed.
 
@@ -89,23 +116,39 @@ Recomputes a **DRAFT** calculation from a new set of pieces — re-runs the same
 
 Deletes a **DRAFT** calculation. `204 No Content` on success.
 
+```bash
+curl -X DELETE http://localhost:5000/api/calculations/cmsals6ur0001ftexloh38wgc
+```
+
 **Errors:** `404 CALCULATION_NOT_FOUND`, `409 INVALID_CALCULATION_STATUS`.
 
 ---
 
 ## Products
 
-### `GET /api/products?limit=`
+### `GET /api/products?limit=&skip=`
 
-Lists products (default limit 50). `200` with `{ products: ProductRecord[], count: number }`.
+Lists products (default `limit` 50, default `skip` 0). `200` with `{ products: ProductRecord[], count: number }`.
+
+```bash
+curl "http://localhost:5000/api/products?limit=20&skip=0"
+```
 
 ### `GET /api/products/:id`
 
 Fetches a product. `200`, or `404 PRODUCT_NOT_FOUND`.
 
-### `GET /api/products/search?q=`
+```bash
+curl http://localhost:5000/api/products/clv9t1a2k0001zzz9qqqqqqqq
+```
+
+### `GET /api/products/search?q=&limit=&skip=`
 
 Case-insensitive search over name/description. `q` must be at least 2 characters. `200` with `{ products, count }`, or `400 INVALID_QUERY`.
+
+```bash
+curl "http://localhost:5000/api/products/search?q=melamina&limit=20&skip=0"
+```
 
 A `ProductRecord`:
 
@@ -129,6 +172,10 @@ A `ProductRecord`:
 ### `GET /health`
 
 `200` `{ "status": "ok", "timestamp": "..." }`. Unwrapped (not the `success`/`data` envelope) — used for uptime checks, not app data.
+
+```bash
+curl http://localhost:5000/health
+```
 
 ### Error codes reference
 
