@@ -31,7 +31,7 @@ describe('ProductUseCaseAdapter', () => {
 
   test('getAll() delegates to repository.findAll()', async () => {
     const result = await adapter.getAll(10);
-    expect(repo.findAll).toHaveBeenCalledWith(10);
+    expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
     expect(result).toEqual([sampleProduct]);
   });
 
@@ -43,7 +43,7 @@ describe('ProductUseCaseAdapter', () => {
 
   test('search() delegates to repository.search()', async () => {
     const result = await adapter.search('melamina');
-    expect(repo.search).toHaveBeenCalledWith('melamina');
+    expect(repo.search).toHaveBeenCalledWith('melamina', undefined, undefined);
     expect(result).toEqual([sampleProduct]);
   });
 });

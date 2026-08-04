@@ -11,7 +11,8 @@ export class ProductController extends BaseController {
   /** GET /api/products */
   public getAll = asyncHandler(async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string, 10) || 50;
-    const products = await this.useCase.getAll(limit);
+    const skip = parseInt(req.query.skip as string, 10) || 0;
+    const products = await this.useCase.getAll(limit, skip);
 
     return this.ok(req, res, { products, count: products.length });
   });
@@ -44,7 +45,9 @@ export class ProductController extends BaseController {
       );
     }
 
-    const products = await this.useCase.search(query);
+    const limit = parseInt(req.query.limit as string, 10) || 50;
+    const skip = parseInt(req.query.skip as string, 10) || 0;
+    const products = await this.useCase.search(query, limit, skip);
     return this.ok(req, res, { products, count: products.length });
   });
 }

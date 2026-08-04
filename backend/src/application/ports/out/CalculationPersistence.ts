@@ -46,15 +46,15 @@ export interface CalculationRecord {
 
 export interface IProductRepository {
   findById(productId: string): Promise<ProductRecord | null>;
-  findAll(limit?: number): Promise<ProductRecord[]>;
-  findByCategory(categoryId: string): Promise<ProductRecord[]>;
-  search(query: string): Promise<ProductRecord[]>;
+  findAll(limit?: number, skip?: number): Promise<ProductRecord[]>;
+  findByCategory(categoryId: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
+  search(query: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
 }
 
 export interface ICalculationRepository {
   save(calculation: Partial<CalculationRecord>): Promise<CalculationRecord>;
   findById(id: string): Promise<CalculationRecord | null>;
-  findByUserId(userId: string, limit: number): Promise<CalculationRecord[]>;
+  findByUserId(userId: string, limit: number, skip?: number): Promise<CalculationRecord[]>;
   update(id: string, data: Partial<CalculationRecord>): Promise<CalculationRecord>;
   delete(id: string): Promise<void>;
 }

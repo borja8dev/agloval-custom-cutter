@@ -17,9 +17,10 @@ export class ProductRepository implements IProductRepository {
     return product ? ProductMapper.toDomain(product) : null;
   }
 
-  async findAll(limit: number = 50): Promise<ProductRecord[]> {
+  async findAll(limit: number = 50, skip: number = 0): Promise<ProductRecord[]> {
     const products = await this.prisma.product.findMany({
       take: limit,
+      skip,
       include: { category: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -27,16 +28,23 @@ export class ProductRepository implements IProductRepository {
     return ProductMapper.toDomainArray(products);
   }
 
-  async findByCategory(categoryId: string): Promise<ProductRecord[]> {
+  async findByCategory(
+    categoryId: string,
+    limit: number = 50,
+    skip: number = 0
+  ): Promise<ProductRecord[]> {
     const products = await this.prisma.product.findMany({
       where: { categoryId },
       include: { category: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
 
     return ProductMapper.toDomainArray(products);
   }
 
-  async search(query: string): Promise<ProductRecord[]> {
+  async search(query: string, limit: number = 50, skip: number = 0): Promise<ProductRecord[]> {
     const products = await this.prisma.product.findMany({
       where: {
         OR: [
@@ -45,7 +53,9 @@ export class ProductRepository implements IProductRepository {
         ],
       },
       include: { category: true },
-      take: 50,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
 
     return ProductMapper.toDomainArray(products);

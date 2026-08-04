@@ -11,15 +11,15 @@ import { IProductRepository, ProductRecord } from '../ports/out/CalculationPersi
 export class ProductUseCaseAdapter implements IProductUseCase {
   constructor(private productRepository: IProductRepository) {}
 
-  async getAll(limit?: number): Promise<ProductRecord[]> {
-    return this.productRepository.findAll(limit);
+  async getAll(limit?: number, skip?: number): Promise<ProductRecord[]> {
+    return this.productRepository.findAll(limit, skip);
   }
 
   async getById(productId: string): Promise<ProductRecord | null> {
     return this.productRepository.findById(productId);
   }
 
-  async search(query: string): Promise<ProductRecord[]> {
-    return this.productRepository.search(query);
+  async search(query: string, limit?: number, skip?: number): Promise<ProductRecord[]> {
+    return this.productRepository.search(query, limit, skip);
   }
 }

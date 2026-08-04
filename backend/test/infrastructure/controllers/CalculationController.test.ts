@@ -197,7 +197,7 @@ describe('CalculationController - Integration', () => {
 
       await request(app).get('/api/products/search?q=melamina').expect(200);
 
-      expect(mockProductUseCase.search).toHaveBeenCalledWith('melamina');
+      expect(mockProductUseCase.search).toHaveBeenCalledWith('melamina', 50, 0);
       expect(mockProductUseCase.getById).not.toHaveBeenCalled();
     });
   });
@@ -300,7 +300,7 @@ describe('CalculationController - Integration', () => {
       const response = await request(app).get('/api/products?limit=10').expect(200);
 
       expect(response.body.data.count).toBe(1);
-      expect(mockProductUseCase.getAll).toHaveBeenCalledWith(10);
+      expect(mockProductUseCase.getAll).toHaveBeenCalledWith(10, 0);
     });
   });
 

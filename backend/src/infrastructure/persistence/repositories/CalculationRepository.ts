@@ -34,12 +34,17 @@ export class CalculationRepository implements ICalculationRepository {
     return calculation ? CalculationMapper.toDomain(calculation) : null;
   }
 
-  async findByUserId(userId: string, limit: number = 50): Promise<CalculationRecord[]> {
+  async findByUserId(
+    userId: string,
+    limit: number = 50,
+    skip: number = 0
+  ): Promise<CalculationRecord[]> {
     const calculations = await this.prisma.calculation.findMany({
       where: { userId },
       include: withProduct,
       orderBy: { createdAt: 'desc' },
       take: limit,
+      skip,
     });
 
     return CalculationMapper.toDomainArray(calculations);

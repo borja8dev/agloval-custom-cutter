@@ -7,7 +7,7 @@ import { ProductRecord } from '../out/CalculationPersistence';
  * service (no orchestration logic beyond "ask the repository" exists yet).
  */
 export interface IProductUseCase {
-  getAll(limit?: number): Promise<ProductRecord[]>;
+  getAll(limit?: number, skip?: number): Promise<ProductRecord[]>;
   getById(productId: string): Promise<ProductRecord | null>;
-  search(query: string): Promise<ProductRecord[]>;
+  search(query: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
 }

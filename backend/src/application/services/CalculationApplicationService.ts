@@ -66,9 +66,10 @@ export class CalculationApplicationService implements ICalculateUseCase {
 
   async listUserCalculations(
     userId: string,
-    limit: number = 50
+    limit: number = 50,
+    skip: number = 0
   ): Promise<CalculationResponseDTO[]> {
-    const calculations = await this.calculationRepository.findByUserId(userId, limit);
+    const calculations = await this.calculationRepository.findByUserId(userId, limit, skip);
     return calculations.map((c) => this.mapToDTOFromEntity(c));
   }
 
