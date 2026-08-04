@@ -52,23 +52,25 @@ export class CalculationRepository implements ICalculationRepository {
 
   /** Only DRAFT calculations may be modified. */
   async update(id: string, data: Partial<CalculationRecord>): Promise<CalculationRecord> {
-    const current = await this.prisma.calculation.findUnique({ where: { id } });
-    if (!current) {
-      throw new CalculationNotFoundException(id);
-    }
-    if (current.status !== 'DRAFT') {
-      throw new InvalidCalculationStatusException(current.status, 'update');
-    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.calculation.findUnique({ where: { id } });
+      if (!current) {
+        throw new CalculationNotFoundException(id);
+      }
+      if (current.status !== 'DRAFT') {
+        throw new InvalidCalculationStatusException(current.status, 'update');
+      }
 
-    const updated = await this.prisma.calculation.update({
-      where: { id },
-      data: {
-        ...(data.requestedPieces !== undefined && { requestedPieces: data.requestedPieces }),
-        ...(data.totalAreaNeeded !== undefined && { totalAreaNeeded: data.totalAreaNeeded }),
-        ...(data.boardsUsed !== undefined && { boardsUsed: data.boardsUsed }),
-        ...(data.totalPrice !== undefined && { totalPrice: data.totalPrice }),
-      },
-      include: withProduct,
+      return tx.calculation.update({
+        where: { id },
+        data: {
+          ...(data.requestedPieces !== undefined && { requestedPieces: data.requestedPieces }),
+          ...(data.totalAreaNeeded !== undefined && { totalAreaNeeded: data.totalAreaNeeded }),
+          ...(data.boardsUsed !== undefined && { boardsUsed: data.boardsUsed }),
+          ...(data.totalPrice !== undefined && { totalPrice: data.totalPrice }),
+        },
+        include: withProduct,
+      });
     });
 
     return CalculationMapper.toDomain(updated);
@@ -76,15 +78,17 @@ export class CalculationRepository implements ICalculationRepository {
 
   /** Only DRAFT calculations may be deleted. */
   async delete(id: string): Promise<void> {
-    const current = await this.prisma.calculation.findUnique({ where: { id } });
-    if (!current) {
-      throw new CalculationNotFoundException(id);
-    }
-    if (current.status !== 'DRAFT') {
-      throw new InvalidCalculationStatusException(current.status, 'delete');
-    }
+    await this.prisma.$transaction(async (tx) => {
+      const current = await tx.calculation.findUnique({ where: { id } });
+      if (!current) {
+        throw new CalculationNotFoundException(id);
+      }
+      if (current.status !== 'DRAFT') {
+        throw new InvalidCalculationStatusException(current.status, 'delete');
+      }
 
-    await this.prisma.calculation.delete({ where: { id } });
+      await tx.calculation.delete({ where: { id } });
+    });
   }
 
   /** Not part of ICalculationRepository — extra convenience, not consumed yet. */
