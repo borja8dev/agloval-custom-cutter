@@ -9,43 +9,45 @@ datasource db {
 
 model Category {
   id   String @id @default(cuid())
-  name String @unique
+  name String @unique @map("name")
 
   products Product[]
 
   // MIGRATION: If BD real ya tiene categorías, mapear por name
+  @@map("categories")
 }
 
 model Product {
   id          String  @id @default(cuid())
-  name        String
-  description String?
+  name        String  @map("name")
+  description String? @map("description")
 
-  categoryId String
+  categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   // Standard board dimensions
-  standardWidth  Int // cm
-  standardHeight Int // cm
-  thickness      Int // mm
+  standardWidth  Int @map("standard_width") // cm
+  standardHeight Int @map("standard_height") // cm
+  thickness      Int @map("thickness") // mm
 
   // Cutting machine constraints (validated in domain, stored for reference)
-  minWidth  Int? // cm
-  minHeight Int? // cm
-  maxWidth  Int? // cm
-  maxHeight Int? // cm
+  minWidth  Int? @map("min_width") // cm
+  minHeight Int? @map("min_height") // cm
+  maxWidth  Int? @map("max_width") // cm
+  maxHeight Int? @map("max_height") // cm
 
   // Pricing
-  pricePerUnit Decimal @db.Decimal(10, 2) // € per board unit
-  pricePerM2   Decimal? @db.Decimal(10, 2) // alternative pricing
-  currency     String  @default("EUR")
+  pricePerUnit Decimal  @db.Decimal(10, 2) @map("price_per_unit") // € per board unit
+  pricePerM2   Decimal? @db.Decimal(10, 2) @map("price_per_m2") // alternative pricing
+  currency     String   @default("EUR") @map("currency")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   calculations Calculation[]
 
   @@index([categoryId])
+  @@map("products")
   // MIGRATION: If BD real tiene tabla "productos", mapear:
   // - name → producto.nombre
   // - pricePerUnit → producto.precio_unitario
@@ -59,29 +61,30 @@ model Product {
 model Calculation {
   id String @id @default(cuid())
 
-  productId String
+  productId String  @map("product_id")
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   // User input: array of { width, height } in cm
-  requestedPieces Json
+  requestedPieces Json @map("requested_pieces")
 
   // Calculation output
-  totalAreaNeeded Decimal @db.Decimal(10, 3) // m²
-  boardsUsed      Decimal @db.Decimal(6, 3) // e.g. 1.2 = 1 board + 20% of another
-  pricePerBoard   Decimal @db.Decimal(10, 2) // price captured at calculation time
-  totalPrice      Decimal @db.Decimal(10, 2)
+  totalAreaNeeded Decimal @db.Decimal(10, 3) @map("total_area_needed") // m²
+  boardsUsed      Decimal @db.Decimal(6, 3) @map("boards_used") // e.g. 1.2 = 1 board + 20% of another
+  pricePerBoard   Decimal @db.Decimal(10, 2) @map("price_per_board") // price captured at calculation time
+  totalPrice      Decimal @db.Decimal(10, 2) @map("total_price")
 
-  status String @default("DRAFT") // DRAFT, SUBMITTED, COMPLETED
+  status String @default("DRAFT") @map("status") // DRAFT, SUBMITTED, COMPLETED
 
-  userId String? // null while guest; auth lands in Phase B
+  userId String? @map("user_id") // null while guest; auth lands in Phase B
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  expiresAt DateTime? // quote validity window, e.g. 30 days
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  expiresAt DateTime? @map("expires_at") // quote validity window, e.g. 30 days
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@map("calculations")
   // MIGRATION: If BD real tiene tabla "presupuestos", mapear:
   // - requestedPieces → presupuesto.piezas_solicitadas (JSON)
   // - totalPrice → presupuesto.precio_total
@@ -91,11 +94,12 @@ model Calculation {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  role      String   @default("CUSTOMER") // CUSTOMER, ADMIN
-  createdAt DateTime @default(now())
+  email     String   @unique @map("email")
+  role      String   @default("CUSTOMER") @map("role") // CUSTOMER, ADMIN
+  createdAt DateTime @default(now()) @map("created_at")
 
   // MIGRATION: Scaffolding only — no real auth exists yet (deliberately out
   // of scope for Phase B, see README Known Limitations). Calculation.userId
   // is accepted from the client but unverified until a real auth phase lands.
+  @@map("users")
 }
