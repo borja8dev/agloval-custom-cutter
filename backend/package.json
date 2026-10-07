@@ -20,6 +20,7 @@
     "seed": "node --loader tsx/cjs prisma/seed.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "db:test:setup": "sh scripts/setup-test-db.sh",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {

@@ -16,7 +16,7 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 
 ## Tasks
 - [x] T1 chore(repo): ignore data/source and data/reports; copy CSV; verify with git status (route: inline, 1 mechanical file; git check-ignore matched both paths, CSV absent from git status)
-- [ ] T2 isolated test DB (DATABASE_URL_TEST) so deleteMany never touches the catalog
+- [x] T2 isolated test DB (DATABASE_URL_TEST) so deleteMany never touches the catalog (route: inline, small files. RED: suite failed on missing module; GREEN: 12 suites / 138 tests pass on agloval_cutting_test; guard refuses agloval_cutting_dev)
 - [ ] T3 schema ALTER migration (Category.code, Product.sku/unit/lengthCm, nullable dims/thickness) + mapper + ProductRecord
 - [ ] T4 parseCatalogCsv (pure, TDD)
 - [ ] T5 import-catalog CLI: dry-run/apply, report, pg_dump guard, families.json
