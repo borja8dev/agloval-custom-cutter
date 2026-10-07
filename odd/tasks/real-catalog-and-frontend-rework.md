@@ -29,4 +29,6 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 Pending (record inline/delegated and trigger evidence as each task starts).
 
 ## Progress / evidence
-None yet.
+- T1-T5 and docs committed. Native review of the catalog slice (tier high, 40 files, 1746 lines): consent granted by the user, 4 lenses, one CRITICAL finding (R4-001: backup guard accepted a truncated pg_dump) fixed in 93ec329 (119 lines), targeted validation approved, acknowledged and authority burned. 14 non-blocking advisory findings remain as follow-ups (warnings on backup-db.sh DB name parsing, CalculationApplicationService null-dimension handling at lines 35-41 and 130-133, readability suggestions in the catalog modules).
+- Review boundary advances to 93ec329. Next review base is that commit.
+- Blocked: user must review backend/data/families.json before `--apply` on the dev DB.
