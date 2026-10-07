@@ -14,6 +14,12 @@ type CalculationWithProduct = Prisma.CalculationGetPayload<{
  */
 export class CalculationMapper {
   static toDomain(calculation: CalculationWithProduct): CalculationRecord {
+    const { standardWidth, standardHeight } = calculation.product;
+    if (standardWidth === null || standardHeight === null) {
+      throw new Error(
+        `Calculation ${calculation.id} references product ${calculation.product.id} without board dimensions`
+      );
+    }
     return {
       id: calculation.id,
       productId: calculation.productId,
@@ -32,8 +38,8 @@ export class CalculationMapper {
       product: {
         id: calculation.product.id,
         name: calculation.product.name,
-        standardWidth: calculation.product.standardWidth,
-        standardHeight: calculation.product.standardHeight,
+        standardWidth,
+        standardHeight,
         thickness: calculation.product.thickness,
         category: {
           name: calculation.product.category.name,

@@ -10,6 +10,7 @@ datasource db {
 model Category {
   id   String @id @default(cuid())
   name String @unique @map("name")
+  code String @unique @map("code") // product family code (e.g. tariff "fam")
 
   products Product[]
 
@@ -22,13 +23,18 @@ model Product {
   name        String  @map("name")
   description String? @map("description")
 
+  sku  String @unique @map("sku")
+  unit String @default("M2") @map("unit") // UD, M2, ML (validated in code)
+
   categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   // Standard board dimensions
-  standardWidth  Int @map("standard_width") // cm
-  standardHeight Int @map("standard_height") // cm
-  thickness      Int @map("thickness") // mm
+  // Nullable: only M2 products carry board dimensions
+  standardWidth  Int? @map("standard_width") // cm
+  standardHeight Int? @map("standard_height") // cm
+  thickness      Int? @map("thickness") // mm
+  lengthCm       Int? @map("length_cm") // ML products only
 
   // Cutting machine constraints (validated in domain, stored for reference)
   minWidth  Int? @map("min_width") // cm

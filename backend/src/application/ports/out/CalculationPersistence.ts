@@ -9,14 +9,22 @@
  * the types below.
  */
 
+export type ProductUnit = 'UD' | 'M2' | 'ML';
+
 export interface ProductRecord {
   id: string;
   name: string;
-  categoryName: string;
-  standardWidth: number; // cm
-  standardHeight: number; // cm
-  thickness: number; // mm
-  pricePerUnit: number; // €
+  sku: string;
+  unit: ProductUnit;
+  familyCode: string;
+  familyName: string;
+  categoryName: string; // alias of familyName
+  standardWidth: number | null; // cm (M2 only)
+  standardHeight: number | null; // cm (M2 only)
+  thickness: number | null; // mm
+  lengthCm: number | null; // cm (ML only)
+  pricePerUnit: number; // € (board for M2, unit for UD, per metre for ML)
+  pricePerM2: number | null; // € (M2 only)
   currency: string;
 }
 
@@ -37,7 +45,7 @@ export interface CalculationRecord {
     name: string;
     standardWidth: number;
     standardHeight: number;
-    thickness: number;
+    thickness: number | null;
     category: {
       name: string;
     };

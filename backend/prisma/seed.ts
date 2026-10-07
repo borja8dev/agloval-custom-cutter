@@ -7,9 +7,9 @@ async function main() {
   await prisma.product.deleteMany({});
   await prisma.category.deleteMany({});
 
-  const melamina = await prisma.category.create({ data: { name: 'Melamina' } });
-  const mdf = await prisma.category.create({ data: { name: 'MDF' } });
-  const osb = await prisma.category.create({ data: { name: 'OSB' } });
+  const melamina = await prisma.category.create({ data: { name: 'Melamina', code: 'MEL' } });
+  const mdf = await prisma.category.create({ data: { name: 'MDF', code: 'MDF' } });
+  const osb = await prisma.category.create({ data: { name: 'OSB', code: 'OSB' } });
 
   const products = [
     {
@@ -144,8 +144,10 @@ async function main() {
     },
   ];
 
-  for (const product of products) {
-    await prisma.product.create({ data: product });
+  for (const [index, product] of products.entries()) {
+    await prisma.product.create({
+      data: { ...product, sku: `SEED-${index + 1}`, unit: 'M2' },
+    });
   }
 
   console.log(`Seeded 3 categories and ${products.length} products.`);

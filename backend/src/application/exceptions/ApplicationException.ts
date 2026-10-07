@@ -6,6 +6,16 @@ export class ProductNotFoundException extends DomainException {
   }
 }
 
+export class UnsupportedProductUnitException extends DomainException {
+  constructor(productId: string, unit: string) {
+    super(
+      `Cutting calculation only supports M2 products; product ${productId} has unit ${unit}`,
+      'UNSUPPORTED_PRODUCT_UNIT',
+      400
+    );
+  }
+}
+
 export class CalculationNotFoundException extends DomainException {
   constructor(calculationId: string) {
     super(`Calculation not found: ${calculationId}`, 'CALCULATION_NOT_FOUND', 404);
