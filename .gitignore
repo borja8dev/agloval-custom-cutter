@@ -56,3 +56,7 @@ prisma/dev.db-journal
 *.swp
 *.swo
 *~
+
+# Real catalog data (contains proprietary prices, never commit)
+data/source/
+data/reports/
