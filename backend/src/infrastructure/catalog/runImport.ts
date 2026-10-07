@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { assertRecentBackup, nodeBackupFs } from './backupGuard';
-import { importCatalog, ImportResult } from './importCatalog';
+import { importCatalog, ImportProgress, ImportResult } from './importCatalog';
 import { loadFamilyNames } from './loadFamilyNames';
 import { parseCatalogCsv } from './parseCatalogCsv';
 
@@ -11,6 +11,8 @@ export interface ImportDeps {
   log: (line: string) => void;
   /** Only called in apply mode, after every argument and the backup were validated. */
   createPrisma: () => PrismaClient;
+  /** Rows per transaction; defaults to the importer's own batch size. */
+  batchSize?: number;
 }
 
 interface CliOptions {
@@ -115,34 +117,55 @@ export async function runImport(argv: string[], deps: ImportDeps): Promise<numbe
     }
 
     let result: ImportResult | undefined;
+    let progress: ImportProgress | undefined;
+    let applyError: unknown;
     if (options.apply) {
       const prisma = deps.createPrisma();
       try {
-        result = await importCatalog(prisma, parsed.items, familyNames);
+        result = await importCatalog(prisma, parsed.items, familyNames, {
+          batchSize: deps.batchSize,
+          onProgress: (p) => {
+            progress = p;
+          }
+        });
+      } catch (error) {
+        applyError = error;
       } finally {
         await prisma.$disconnect();
       }
-      log(
-        `Imported: ${result.categoriesUpserted} categories, ${result.productsCreated} products created, ` +
-          `${result.productsUpdated} updated`
-      );
-      if (result.unnamedFamilies.length > 0) {
-        log(`Categories created with fallback names: ${result.unnamedFamilies.join(', ')}`);
+      if (result) {
+        log(
+          `Imported: ${result.categoriesUpserted} categories, ${result.productsCreated} products created, ` +
+            `${result.productsUpdated} updated`
+        );
+        if (result.unnamedFamilies.length > 0) {
+          log(`Categories created with fallback names: ${result.unnamedFamilies.join(', ')}`);
+        }
+      } else {
+        // Earlier batches are already committed: say so, and keep going so the report is written.
+        const applied = progress
+          ? `${progress.productsCreated} created and ${progress.productsUpdated} updated before the failure`
+          : 'nothing was committed before the failure';
+        log(`Import FAILED: ${applyError instanceof Error ? applyError.message : String(applyError)}`);
+        log(`Partial apply: ${applied}. The import is idempotent: fix the cause and re-run it.`);
       }
     } else {
       log('Dry-run: no database changes were made. Use --apply --backup-file <path> to import.');
     }
 
     // The report intentionally carries sku/line/code only: no prices or descriptions.
+    // On failure the error is reduced to its name, because database error messages can echo row data.
     const report = {
       generatedAt: deps.now().toISOString(),
       mode,
+      status: applyError ? 'failed' : 'ok',
       file: path.basename(options.file),
       summary,
       skipped: skipped.map((s) => ({ line: s.line, reason: s.reason })),
       warnings: warnings.map((w) => ({ line: w.line, sku: w.sku, code: w.code })),
       missingFamilies,
-      import: result ?? null
+      import: result ?? progress ?? null,
+      ...(applyError ? { error: { name: applyError instanceof Error ? applyError.name : 'UnknownError' } } : {})
     };
     fs.mkdirSync(options.reportDir, { recursive: true });
     const reportPath = path.join(
@@ -151,7 +174,7 @@ export async function runImport(argv: string[], deps: ImportDeps): Promise<numbe
     );
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
     log(`Report written to ${reportPath}`);
-    return 0;
+    return applyError ? 1 : 0;
   } catch (error) {
     log(`Error: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof Error && /argument|Missing value|--apply/.test(error.message)) log(USAGE);

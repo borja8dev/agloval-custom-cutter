@@ -63,6 +63,49 @@ describe('runImport', () => {
     expect(out).toMatch(/02/);
   });
 
+  it('still writes a report with partial progress and the error name when an apply fails mid-way', async () => {
+    const backup = path.join(dir, 'backup.sql');
+    fs.writeFileSync(backup, 'CREATE TABLE t (id text);\n-- PostgreSQL database dump complete\n');
+    let batch = 0;
+    const fakePrisma = {
+      category: {
+        findMany: async () => [],
+        upsert: async ({ where }: { where: { code: string } }) => ({ id: `cat-${where.code}` })
+      },
+      product: { findMany: async () => [], upsert: (args: unknown) => args },
+      $transaction: async () => {
+        batch += 1;
+        if (batch === 2) {
+          const error = new Error('connection dropped, secret=12,50');
+          error.name = 'PrismaClientKnownRequestError';
+          throw error;
+        }
+        return [];
+      },
+      $disconnect: async () => undefined
+    };
+
+    const code = await runImport(args('--apply', '--backup-file', backup), {
+      ...deps(),
+      batchSize: 1,
+      createPrisma: () => fakePrisma as never
+    });
+
+    expect(code).toBe(1);
+    const files = fs.readdirSync(path.join(dir, 'reports'));
+    expect(files).toHaveLength(1);
+    const raw = fs.readFileSync(path.join(dir, 'reports', files[0]), 'utf8');
+    const report = JSON.parse(raw);
+    expect(report.mode).toBe('apply');
+    expect(report.status).toBe('failed');
+    // The fixture CSV has two families (01 and 02) and three importable rows, one per batch.
+    expect(report.import).toEqual({ categoriesUpserted: 2, productsCreated: 1, productsUpdated: 0 });
+    expect(report.error).toEqual({ name: 'PrismaClientKnownRequestError' });
+    expect(raw).not.toMatch(/12[.,]50|secret|connection dropped/);
+    expect(lines.join('\n')).toMatch(/connection dropped/);
+    expect(lines.join('\n')).toMatch(/Report written to/);
+  });
+
   it('refuses --apply without --backup-file before touching the database', async () => {
     const code = await runImport(args('--apply'), deps());
     expect(code).toBe(1);

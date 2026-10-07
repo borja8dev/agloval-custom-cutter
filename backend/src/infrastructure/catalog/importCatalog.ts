@@ -9,8 +9,17 @@ export interface ImportResult {
   unnamedFamilies: string[];
 }
 
+/** Cumulative counts of what has been committed so far. */
+export interface ImportProgress {
+  categoriesUpserted: number;
+  productsCreated: number;
+  productsUpdated: number;
+}
+
 export interface ImportOptions {
   batchSize?: number;
+  /** Called after each committed batch, so a failure later on still leaves a record of what was applied. */
+  onProgress?: (progress: ImportProgress) => void;
 }
 
 const DEFAULT_BATCH_SIZE = 500;
@@ -79,6 +88,7 @@ export async function importCatalog(
     const updated = batch.filter((item) => existingSkus.has(item.sku)).length;
     productsUpdated += updated;
     productsCreated += batch.length - updated;
+    opts.onProgress?.({ categoriesUpserted: codes.length, productsCreated, productsUpdated });
   }
 
   return { categoriesUpserted: codes.length, productsCreated, productsUpdated, unnamedFamilies: unnamed };
