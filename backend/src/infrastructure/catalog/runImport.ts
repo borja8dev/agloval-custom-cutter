@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
-import { assertRecentBackup } from './backupGuard';
+import { assertRecentBackup, nodeBackupFs } from './backupGuard';
 import { importCatalog, ImportResult } from './importCatalog';
 import { loadFamilyNames } from './loadFamilyNames';
 import { parseCatalogCsv } from './parseCatalogCsv';
@@ -79,7 +79,7 @@ export async function runImport(argv: string[], deps: ImportDeps): Promise<numbe
     const mode = options.apply ? 'apply' : 'dry-run';
 
     if (options.apply) {
-      assertRecentBackup({ path: options.backupFile as string, now: deps.now() }, fs);
+      assertRecentBackup({ path: options.backupFile as string, now: deps.now() }, nodeBackupFs);
     }
 
     const familyNames = loadFamilyNames(options.families);

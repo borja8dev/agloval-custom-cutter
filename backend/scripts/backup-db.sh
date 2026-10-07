@@ -11,10 +11,15 @@ FILE="$BACKUP_DIR/${DB_NAME}-$(date +%Y%m%dT%H%M%S).sql"
 
 mkdir -p "$BACKUP_DIR"
 
+# A dump killed mid-write must not be left behind looking like a valid backup.
+DONE=0
+trap '[ "$DONE" = 1 ] || rm -f "$FILE"' EXIT
+
 if command -v pg_dump >/dev/null 2>&1; then
   pg_dump "$DATABASE_URL" --no-owner --file "$FILE"
 else
   docker exec agloval_postgres pg_dump -U agloval_user --no-owner "$DB_NAME" > "$FILE"
 fi
 
+DONE=1
 echo "$FILE"
