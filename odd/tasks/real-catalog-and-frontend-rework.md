@@ -18,7 +18,7 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 - [x] T1 chore(repo): ignore data/source and data/reports; copy CSV; verify with git status (route: inline, 1 mechanical file; git check-ignore matched both paths, CSV absent from git status)
 - [x] T2 isolated test DB (DATABASE_URL_TEST) so deleteMany never touches the catalog (route: inline, small files. RED: suite failed on missing module; GREEN: 12 suites / 138 tests pass on agloval_cutting_test; guard refuses agloval_cutting_dev)
 - [x] T3 schema ALTER migration (Category.code, Product.sku/unit/lengthCm, nullable dims/thickness) + mapper + ProductRecord (route: delegated writer, 5+ non-trivial files; RED: new mapper/service suites failed to compile; GREEN: 12 suites / 148 tests, tsc and lint clean, migrate status up to date on test DB; migration 20260807090000_add_catalog_fields)
-- [ ] T4 parseCatalogCsv (pure, TDD)
+- [x] T4 parseCatalogCsv (pure, TDD) (route: delegated writer; RED: suite failed on missing module; GREEN: 13 suites / 175 tests, tsc and lint clean; real CSV parses 2690 rows, 0 skipped, UD 2001 / M2 607 / ML 82, 62 families; warnings: 33 percent prefix, 7 dot prefix, 8 duplicate-description rows, 2 dimension mismatches)
 - [ ] T5 import-catalog CLI: dry-run/apply, report, pg_dump guard, families.json
 - [ ] T6 docs: MIGRATION_GUIDE + ERD; validate counts (2001/607/82, 62 families) after user OK
 - [ ] T7 backend: family/unit filters, /api/families, QuoteOrder, per-unit validation, min piece 2x15
