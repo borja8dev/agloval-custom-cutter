@@ -10,22 +10,26 @@ erDiagram
     CATEGORY {
         string id PK
         string name UK
+        string code UK "product family code from the tariff, text"
     }
 
     PRODUCT {
         string id PK
+        string sku UK "tariff article code"
+        string unit "UD, M2 or ML"
         string name
-        string description "nullable"
+        string description "nullable, original tariff text"
         string categoryId FK
-        int standardWidth "cm"
-        int standardHeight "cm"
-        int thickness "mm"
+        int standardWidth "nullable, cm, M2 only"
+        int standardHeight "nullable, cm, M2 only"
+        int thickness "nullable, mm"
+        int lengthCm "nullable, ML only"
         int minWidth "nullable, cm"
         int minHeight "nullable, cm"
         int maxWidth "nullable, cm"
         int maxHeight "nullable, cm"
-        decimal pricePerUnit "Decimal(10,2), EUR per board"
-        decimal pricePerM2 "nullable, Decimal(10,2)"
+        decimal pricePerUnit "Decimal(10,2), EUR per board (M2, derived), per unit (UD) or per metre (ML)"
+        decimal pricePerM2 "nullable, Decimal(10,2), tariff price for M2"
         string currency "default EUR"
         datetime createdAt
         datetime updatedAt
@@ -57,8 +61,10 @@ erDiagram
 ## Notes
 
 - **`Calculation.userId` is not a real relation.** There's no `@relation` between `Calculation` and `User` in the schema — `User` exists as scaffolding for a future auth phase, and `userId` is whatever value the client sends, unverified. This is deliberate (see Known Limitations in the root `README.md`), not a missing foreign key that should be added.
+- **`Category` is a product family.** `code` is the tariff family code and stays text because of leading zeros (`03`, `091`). Display names come from `backend/data/families.json`.
+- **`Product.unit` is a plain string** (`UD`, `M2`, `ML`), validated in code, like `Calculation.status`. Only `M2` products can be cut; UD and ML items have no board dimensions.
 - **Indexes:** `Product.categoryId`; `Calculation.userId`, `Calculation.status`, `Calculation.createdAt`.
 - **`onDelete: Restrict`** on `Product → Category` and `Calculation → Product` — you can't delete a category or product that still has dependent rows.
 - All monetary fields use `Decimal`, not `Float` — see `docs/DECISIONS.md` for why (float rounding is unacceptable for pricing).
 
-For how these fields map to Agloval's eventual real-database column names, see `docs/MIGRATION_GUIDE.md` — that mapping lives in `// MIGRATION:` comments in the schema itself and in the persistence-layer mappers, not as Prisma `@map` directives (see `docs/ARCHITECTURE.md` for why the mapping boundary sits there).
+For how these fields map to Agloval's eventual real-database column names, see `docs/MIGRATION_GUIDE.md` — that mapping lives in `// MIGRATION:` comments in the schema itself and in the persistence-layer mappers. Column and table names are snake_case through Prisma `@map`/`@@map` (see `docs/ARCHITECTURE.md` for why the mapping boundary sits there).
