@@ -57,7 +57,8 @@ export class CuttingCalculator {
     const totalAreaNeeded = this.calculateTotalArea(pieces);
     const boardsNeeded = this.calculateBoardsNeeded(totalAreaNeeded);
     const wastePercentage = this.calculateWastePercentage(totalAreaNeeded, boardsNeeded);
-    const averagePieceSize = totalAreaNeeded / pieces.length;
+    const pieceCount = this.countPieces(pieces);
+    const averagePieceSize = totalAreaNeeded / pieceCount;
 
     return {
       requestedPieces: pieces,
@@ -66,7 +67,7 @@ export class CuttingCalculator {
       boardArea: Number(this.boardArea.toFixed(4)),
       boardsNeeded: Number(boardsNeeded.toFixed(2)),
       wastePercentage: Number(wastePercentage.toFixed(2)),
-      pieceCount: pieces.length,
+      pieceCount,
       averagePieceSize: Number(averagePieceSize.toFixed(4)),
       isValid: true,
       errors: [],
@@ -92,6 +93,10 @@ export class CuttingCalculator {
       errors.push(`Height must be a positive number, got ${piece.height}`);
     }
 
+    if (piece.quantity !== undefined && (!Number.isInteger(piece.quantity) || piece.quantity < 1)) {
+      errors.push(`Quantity must be a positive integer, got ${piece.quantity}`);
+    }
+
     if (piece.width < this.minPieceWidth) {
       errors.push(`Width (${piece.width}cm) below minimum (${this.minPieceWidth}cm)`);
     }
@@ -112,8 +117,16 @@ export class CuttingCalculator {
   }
 
   private calculateTotalArea(pieces: Piece[]): number {
-    const totalCm2 = pieces.reduce((sum, piece) => sum + piece.width * piece.height, 0);
+    const totalCm2 = pieces.reduce(
+      (sum, piece) => sum + piece.width * piece.height * (piece.quantity ?? 1),
+      0
+    );
     return this.cmToM2(totalCm2);
+  }
+
+  /** Quantities are multiplied, never expanded into arrays of copies. */
+  private countPieces(pieces: Piece[]): number {
+    return pieces.reduce((sum, piece) => sum + (piece.quantity ?? 1), 0);
   }
 
   /**
