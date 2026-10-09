@@ -1,35 +1,50 @@
 import { useEffect, useState } from 'react';
-import { Product } from '../types';
-import { getProducts, searchProducts, getErrorMessage } from '../services/api';
+import { CatalogProduct, Product } from '../types';
+import { listProducts, searchProducts, getErrorMessage } from '../services/api';
+
+const PAGE_SIZE = 50;
 
 interface UseProductsReturn {
+  // Legacy typing for the current page; the API now returns CatalogProduct data.
   products: Product[];
+  catalogProducts: CatalogProduct[];
+  total: number;
   isLoading: boolean;
   error: string | null;
   search: (query: string) => Promise<Product[]>;
 }
 
-export function useProducts(): UseProductsReturn {
-  const [products, setProducts] = useState<Product[]>([]);
+export function useProducts(family?: string): UseProductsReturn {
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await getProducts(50);
-        setProducts(data);
-      } catch (err) {
-        setError(getErrorMessage(err, 'Failed to fetch products'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // Cleanup flips this flag, so a response of a superseded request is ignored.
+    let active = true;
 
-    fetchProducts();
-  }, []);
+    setIsLoading(true);
+    setError(null);
+    listProducts({ family, limit: PAGE_SIZE })
+      .then((page) => {
+        if (!active) return;
+        setCatalogProducts(page.products);
+        setTotal(page.total);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(getErrorMessage(err, 'Failed to fetch products'));
+        setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [family]);
+
+  const products = catalogProducts as unknown as Product[];
 
   const search = async (query: string): Promise<Product[]> => {
     if (!query || query.length < 2) {
@@ -39,10 +54,5 @@ export function useProducts(): UseProductsReturn {
     return searchProducts(query);
   };
 
-  return {
-    products,
-    isLoading,
-    error,
-    search
-  };
+  return { products, catalogProducts, total, isLoading, error, search };
 }
