@@ -27,7 +27,7 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 - [x] T8b1 frontend picker components: FamilySelect, ProductList (internal scroll, in-order badge, search box), OrderLineForm (unit-aware: M2 width/height/quantity, UD/ML quantity with fixed measure shown) (branch feat/frontend-product-picker, commits b9da7c1, cdc5673, 15542fe, 034e178; route: delegated writer, RED observed per test file; GREEN: 19 files / 165 tests, build and lint clean; each commit verified in isolation)
 - [x] T8b2 frontend order components: OrderSummary (lines with internal scroll, sticky total, per-board-group summary), OrderHistory (grouped by Pedido #N, breakdown, reorder, internal scroll) (branch feat/frontend-order-views, commits 992877b, a1b7c8e, fb509f5; route: delegated writer, RED observed per test file; GREEN: 22 files / 203 tests, build and lint clean; each commit verified in isolation)
 - [ ] T8c frontend page: stacked full-width layout, remove AreaVisualizer/waste/CartPreview/PriceDisplay, adapt export/share
-- [ ] T9 rewrite Cypress specs
+- [ ] T9 rewrite Cypress specs (needs the real catalog loaded in the dev database)
 
 ## Route per task
 Pending (record inline/delegated and trigger evidence as each task starts).
