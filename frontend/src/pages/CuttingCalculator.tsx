@@ -1,200 +1,194 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useFamilies } from '../hooks/useFamilies';
 import { useProducts } from '../hooks/useProducts';
-import { useCalculation } from '../hooks/useCalculation';
-import { useCalculationHistory } from '../hooks/useCalculationHistory';
-import { getProduct } from '../services/api';
-import { ProductCard } from '../components/ProductCard';
-import { MeasurementForm } from '../components/MeasurementForm';
-import { PiecesList } from '../components/PiecesList';
-import { PriceDisplay } from '../components/PriceDisplay';
-import { AreaVisualizer } from '../components/AreaVisualizer';
-import { CartPreview } from '../components/CartPreview';
-import { CalculationHistory } from '../components/CalculationHistory';
-import { Alert } from '../components/Alert';
+import { useOrder } from '../hooks/useOrder';
+import { useOrderQuote } from '../hooks/useOrderQuote';
+import { useOrderHistory } from '../hooks/useOrderHistory';
+import { reorderFromHistory } from '../services/reorder';
+import { FamilySelect } from '../components/FamilySelect';
+import { ProductList } from '../components/ProductList';
+import { OrderLineForm } from '../components/OrderLineForm';
+import { OrderSummary } from '../components/OrderSummary';
+import { OrderHistory } from '../components/OrderHistory';
 import { ExportButton } from '../components/ExportButton';
-import { CalculationResponse } from '../types';
+import { Alert } from '../components/Alert';
+import type { CatalogProduct, OrderHistoryEntry } from '../types';
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+type HistoryStatus = { kind: 'success' | 'warning'; message: string };
+
+const cardClass = 'bg-white rounded-lg shadow-md p-4 sm:p-6';
+const headingClass = 'text-xl font-bold mb-4';
 
 export const CuttingCalculator: React.FC = () => {
-  const { products, isLoading: isLoadingProducts, error: productsError } = useProducts();
+  const [family, setFamily] = useState('');
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [confirmPending, setConfirmPending] = useState(false);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+
+  const { families, isLoading: isLoadingFamilies, error: familiesError } = useFamilies();
   const {
-    selectedProduct,
-    pieces,
-    calculation,
-    isLoading,
-    error,
-    setSelectedProduct,
-    addPiece,
-    removePiece,
-    updatePiece,
-    calculate,
-    loadFromHistory,
-    reset,
-    clearError
-  } = useCalculation();
+    catalogProducts,
+    total,
+    isLoading: isLoadingProducts,
+    error: productsError
+  } = useProducts(family || undefined, debouncedQuery);
 
-  const {
-    history,
-    isLoading: isLoadingHistory,
-    addItem,
-    removeItem
-  } = useCalculationHistory();
+  const order = useOrder();
+  const { quote, isLoading: isQuoting, error: quoteError } = useOrderQuote(order.toQuoteRequest());
+  const { history, addOrder, removeOrder, clearHistory } = useOrderHistory();
 
-  const [view, setView] = useState<'calculator' | 'history'>('calculator');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
-  const [isLoadingHistoryItem, setIsLoadingHistoryItem] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-  const handleCalculate = async () => {
-    const result = await calculate();
-    if (result) {
-      addItem(result);
-      setSuccessMessage('Cálculo guardado en histórico');
+  // The new order number is read back from the history once it has been saved.
+  useEffect(() => {
+    if (confirmPending && history.length > 0) {
+      setSavedMessage(`Pedido #${history[0].number} guardado`);
+      setConfirmPending(false);
     }
+  }, [confirmPending, history]);
+
+  const handleConfirm = () => {
+    if (!quote || order.lines.length === 0) return;
+    addOrder(quote, order.lines);
+    order.clear();
+    setHistoryStatus(null);
+    setConfirmPending(true);
   };
 
-  const handleLoadFromHistory = async (calc: CalculationResponse) => {
-    if (isLoadingHistoryItem) return;
-
-    setHistoryLoadError(null);
-    setIsLoadingHistoryItem(true);
+  const handleReorder = async (entry: OrderHistoryEntry) => {
+    if (isReordering) return;
+    setIsReordering(true);
+    setSavedMessage(null);
     try {
-      const product = await getProduct(calc.product.id);
-      loadFromHistory(product, calc);
-      setView('calculator');
-    } catch {
-      setHistoryLoadError('No se pudo cargar este cálculo: el producto ya no está disponible.');
+      const { lines, missing } = await reorderFromHistory(entry);
+      if (lines.length > 0) {
+        order.replaceLines(lines);
+      }
+      if (missing.length === 0) {
+        setHistoryStatus({
+          kind: 'success',
+          message: `Pedido #${entry.number} cargado en el pedido actual`
+        });
+      } else {
+        const names = missing.join(', ');
+        setHistoryStatus({
+          kind: 'warning',
+          message:
+            lines.length > 0
+              ? `Pedido #${entry.number} cargado, pero estos productos ya no existen: ${names}`
+              : `No se pudo cargar el pedido #${entry.number}: estos productos ya no existen: ${names}`
+        });
+      }
     } finally {
-      setIsLoadingHistoryItem(false);
+      setIsReordering(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-blue-600 text-white py-6 sm:py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
-              Calculadora de Corte Personalizado
-            </h1>
-            <p className="text-blue-100 text-sm sm:text-base">
-              Calcula cuántos tableros necesitas para tus piezas personalizadas
-            </p>
-          </div>
-
-          <button
-            onClick={() => setView(view === 'calculator' ? 'history' : 'calculator')}
-            className="self-start sm:self-auto bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-          >
-            {view === 'calculator' ? `📋 Historial (${history.length})` : '← Volver a calcular'}
-          </button>
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
+            Calculadora de Corte Personalizado
+          </h1>
+          <p className="text-blue-100 text-sm sm:text-base">
+            Calcula tu pedido de tableros, unidades y barras
+          </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
-        {productsError && <Alert type="error" message={productsError} />}
-
-        {error && <Alert type="error" message={error} onClose={clearError} />}
-
-        {historyLoadError && (
-          <div className="mt-4">
-            <Alert
-              type="error"
-              message={historyLoadError}
-              onClose={() => setHistoryLoadError(null)}
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-6">
+        <section aria-labelledby="block-products" className={cardClass}>
+          <h2 id="block-products" className={headingClass}>
+            1. Selecciona producto
+          </h2>
+          <div className="space-y-4">
+            {familiesError && <Alert type="error" message={familiesError} />}
+            <FamilySelect
+              families={families}
+              value={family}
+              onChange={setFamily}
+              isLoading={isLoadingFamilies}
+            />
+            <ProductList
+              products={catalogProducts}
+              selectedId={selectedProduct?.id ?? null}
+              onSelect={setSelectedProduct}
+              countsByProduct={order.countsByProduct}
+              isLoading={isLoadingProducts}
+              error={productsError}
+              query={query}
+              onQueryChange={setQuery}
+              total={total}
             />
           </div>
-        )}
+        </section>
 
-        {successMessage && (
-          <div className="mt-4">
-            <Alert
-              type="success"
-              message={successMessage}
-              onClose={() => setSuccessMessage(null)}
-              autoClose
-            />
-          </div>
-        )}
+        <section aria-labelledby="block-line" className={cardClass}>
+          <h2 id="block-line" className={headingClass}>
+            2. Medidas y cantidad
+          </h2>
+          <OrderLineForm
+            product={selectedProduct}
+            onAddPiece={(piece) => selectedProduct && order.addPieces(selectedProduct, piece)}
+            onAddQuantity={(quantity) =>
+              selectedProduct && order.addQuantity(selectedProduct, quantity)
+            }
+          />
+        </section>
 
-        {view === 'history' ? (
-          <div className="max-w-2xl mx-auto mt-6">
-            <CalculationHistory
-              calculations={history}
-              onSelect={handleLoadFromHistory}
-              onDelete={removeItem}
-              isLoading={isLoadingHistory || isLoadingHistoryItem}
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mt-6">
-            <div>
-              <h2 className="text-xl font-bold mb-4">1. Selecciona tablero</h2>
-
-              {isLoadingProducts ? (
-                <div className="text-center py-8 text-gray-500">Cargando productos...</div>
-              ) : (
-                <div className="space-y-3">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      isSelected={selectedProduct?.id === product.id}
-                      onSelect={setSelectedProduct}
-                    />
-                  ))}
-                </div>
+        <section aria-labelledby="block-order" className={cardClass}>
+          <h2 id="block-order" className={headingClass}>
+            3. Pedido actual
+          </h2>
+          <div className="space-y-3">
+            <div role="status" aria-live="polite">
+              {savedMessage && (
+                <p className="text-sm border rounded-md p-2 bg-green-50 text-green-800 border-green-200">
+                  {savedMessage}
+                </p>
               )}
             </div>
-
-            <div>
-              <h2 className="text-xl font-bold mb-4">2. Añade medidas</h2>
-
-              <div className="space-y-4">
-                <MeasurementForm onAddPiece={addPiece} isLoading={isLoading} />
-
-                <PiecesList
-                  pieces={pieces}
-                  onRemove={removePiece}
-                  onUpdate={updatePiece}
-                  isLoading={isLoading}
-                />
-
-                {selectedProduct && pieces.length > 0 && (
-                  <button
-                    onClick={handleCalculate}
-                    disabled={isLoading}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:bg-gray-400 transition-colors mt-4"
-                    data-testid="calculate-btn"
-                  >
-                    {isLoading ? 'Calculando...' : 'Calcular'}
-                  </button>
-                )}
-
-                {(selectedProduct || pieces.length > 0) && (
-                  <button
-                    onClick={reset}
-                    disabled={isLoading}
-                    className="w-full bg-gray-300 text-gray-800 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
-                  >
-                    Limpiar
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold">3. Resultado</h2>
-              <PriceDisplay calculation={calculation} isLoading={isLoading} />
-              {calculation && !isLoading && <AreaVisualizer calculation={calculation} />}
-              <CartPreview
-                product={selectedProduct}
-                calculation={calculation}
-                isLoading={isLoading}
-              />
-              {calculation && !isLoading && <ExportButton calculation={calculation} />}
+            <OrderSummary
+              lines={order.lines}
+              quote={quote}
+              isLoading={isQuoting}
+              error={quoteError}
+              onUpdatePiece={order.updatePiece}
+              onRemovePiece={order.removePiece}
+              onUpdateQuantity={order.updateQuantity}
+              onRemoveLine={order.removeLine}
+              onConfirm={handleConfirm}
+              onClear={order.clear}
+            />
+            <div className="flex justify-end">
+              <ExportButton quote={quote} />
             </div>
           </div>
-        )}
+        </section>
+
+        <section aria-labelledby="block-history" className={cardClass}>
+          <h2 id="block-history" className={headingClass}>
+            4. Historial
+          </h2>
+          <OrderHistory
+            history={history}
+            onReorder={handleReorder}
+            onRemove={removeOrder}
+            onClear={clearHistory}
+            status={historyStatus}
+            isReordering={isReordering}
+          />
+        </section>
       </div>
     </div>
   );

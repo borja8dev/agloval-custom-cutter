@@ -1,24 +1,27 @@
 import { useEffect, useState } from 'react';
-import { CatalogProduct, Product } from '../types';
-import { listProducts, searchProducts, getErrorMessage } from '../services/api';
+import { CatalogProduct } from '../types';
+import { listProducts, searchCatalogProducts, getErrorMessage } from '../services/api';
 
 const PAGE_SIZE = 50;
+const MIN_QUERY_LENGTH = 2;
 
 interface UseProductsReturn {
-  // Legacy typing for the current page; the API now returns CatalogProduct data.
-  products: Product[];
   catalogProducts: CatalogProduct[];
   total: number;
   isLoading: boolean;
   error: string | null;
-  search: (query: string) => Promise<Product[]>;
 }
 
-export function useProducts(family?: string): UseProductsReturn {
+// Loads one page of the catalog, filtered by family. A query of 2+ characters
+// switches to the search endpoint (still scoped to the family); anything
+// shorter shows the plain family list again.
+export function useProducts(family?: string, query: string = ''): UseProductsReturn {
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const trimmedQuery = query.trim();
 
   useEffect(() => {
     // Cleanup flips this flag, so a response of a superseded request is ignored.
@@ -26,7 +29,12 @@ export function useProducts(family?: string): UseProductsReturn {
 
     setIsLoading(true);
     setError(null);
-    listProducts({ family, limit: PAGE_SIZE })
+    const request =
+      trimmedQuery.length >= MIN_QUERY_LENGTH
+        ? searchCatalogProducts(trimmedQuery, { family, limit: PAGE_SIZE })
+        : listProducts({ family, limit: PAGE_SIZE });
+
+    request
       .then((page) => {
         if (!active) return;
         setCatalogProducts(page.products);
@@ -42,17 +50,7 @@ export function useProducts(family?: string): UseProductsReturn {
     return () => {
       active = false;
     };
-  }, [family]);
+  }, [family, trimmedQuery]);
 
-  const products = catalogProducts as unknown as Product[];
-
-  const search = async (query: string): Promise<Product[]> => {
-    if (!query || query.length < 2) {
-      return products;
-    }
-
-    return searchProducts(query);
-  };
-
-  return { products, catalogProducts, total, isLoading, error, search };
+  return { catalogProducts, total, isLoading, error };
 }

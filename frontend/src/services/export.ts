@@ -1,46 +1,43 @@
-import { CalculationResponse } from '../types';
+import type { OrderQuote, QuoteGroup } from '../types';
+import { formatDecimal } from '../utils/formatters';
 
-export async function exportToPDF(_calculation: CalculationResponse): Promise<void> {
+const money = (value: number, currency: string) => `${formatDecimal(value)} ${currency}`;
+
+function describeGroup(group: QuoteGroup, currency: string): string {
+  const name = group.product.name;
+  switch (group.kind) {
+    case 'BOARD':
+      return `${name}: ${group.boardsNeeded} ${group.boardsNeeded === 1 ? 'tablero' : 'tableros'} = ${money(group.price, currency)}`;
+    case 'UNIT':
+      return `${name}: ${group.quantity} x ${money(group.unitPrice, currency)} = ${money(group.price, currency)}`;
+    case 'LINEAR':
+      return `${name}: ${group.quantity} ${group.quantity === 1 ? 'barra' : 'barras'} de ${formatDecimal(group.lengthM)} m = ${money(group.price, currency)}`;
+  }
+}
+
+// Plain-text summary of a quote, shared by every export/share channel.
+export function buildOrderText(quote: OrderQuote): string {
+  const lines = quote.groups.map((group) => `- ${describeGroup(group, quote.currency)}`);
+  return [
+    'Presupuesto de pedido Agloval',
+    '',
+    ...lines,
+    '',
+    `Total: ${money(quote.total, quote.currency)}`
+  ].join('\n');
+}
+
+export async function exportToPDF(_quote: OrderQuote): Promise<void> {
   throw new Error('PDF export requires the jsPDF dependency — planned for Fase D');
 }
 
-export function shareViaWhatsApp(calculation: CalculationResponse, shareUrl: string): void {
-  const message = `
-Presupuesto de corte personalizado
-Producto: ${calculation.product.name}
-Precio: €${calculation.pricing.totalPrice.toFixed(2)}
-Tableros necesarios: ${calculation.calculation.boardsNeeded.toFixed(1)}
-Ver detalles: ${shareUrl}
-  `.trim();
-
-  const encodedMessage = encodeURIComponent(message);
-  const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+export function shareViaWhatsApp(quote: OrderQuote): void {
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(buildOrderText(quote))}`;
   window.open(whatsappUrl, '_blank');
 }
 
-export function shareViaEmail(calculation: CalculationResponse, shareUrl: string): void {
-  const subject = `Presupuesto - ${calculation.product.name}`;
-  const body = `
-Hola,
-
-Te envío el presupuesto de corte personalizado:
-
-Producto: ${calculation.product.name}
-Precio Total: €${calculation.pricing.totalPrice.toFixed(2)}
-Tableros necesarios: ${calculation.calculation.boardsNeeded.toFixed(1)}
-
-Más detalles: ${shareUrl}
-
-Saludos,
-Agloval
-  `.trim();
-
-  const encodedSubject = encodeURIComponent(subject);
-  const encodedBody = encodeURIComponent(body);
-  const mailtoUrl = `mailto:?subject=${encodedSubject}&body=${encodedBody}`;
-  window.location.href = mailtoUrl;
-}
-
-export function generateShareUrl(calculationId: string): string {
-  return `${window.location.origin}?calc=${calculationId}`;
+export function shareViaEmail(quote: OrderQuote): void {
+  const subject = encodeURIComponent('Presupuesto de pedido Agloval');
+  const body = encodeURIComponent(`Hola,\n\nTe envío el presupuesto:\n\n${buildOrderText(quote)}\n\nSaludos,\nAgloval`);
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
 }

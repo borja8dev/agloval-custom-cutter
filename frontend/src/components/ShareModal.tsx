@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CalculationResponse } from '../types';
-import { generateShareUrl, shareViaWhatsApp, shareViaEmail } from '../services/export';
+import { OrderQuote } from '../types';
+import { buildOrderText, shareViaWhatsApp, shareViaEmail } from '../services/export';
 
 interface ShareModalProps {
-  calculation: CalculationResponse;
+  quote: OrderQuote;
   onClose: () => void;
 }
 
-export const ShareModal: React.FC<ShareModalProps> = ({ calculation, onClose }) => {
+export const ShareModal: React.FC<ShareModalProps> = ({ quote, onClose }) => {
   const [copyFeedback, setCopyFeedback] = useState<'copied' | 'failed' | null>(null);
   const copyFeedbackTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -15,11 +15,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ calculation, onClose }) 
     return () => clearTimeout(copyFeedbackTimer.current);
   }, []);
 
-  const shareUrl = generateShareUrl(calculation.id);
-
-  const handleCopyLink = async () => {
+  const handleCopySummary = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(buildOrderText(quote));
       setCopyFeedback('copied');
     } catch {
       setCopyFeedback('failed');
@@ -44,32 +42,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({ calculation, onClose }) 
         <div className="space-y-3">
           <button
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => shareViaWhatsApp(calculation, shareUrl)}
+            onClick={() => shareViaWhatsApp(quote)}
           >
             Compartir por WhatsApp
           </button>
 
           <button
             className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors"
-            onClick={() => shareViaEmail(calculation, shareUrl)}
+            onClick={() => shareViaEmail(quote)}
           >
             Enviar por email
           </button>
 
           <button
             className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-            onClick={handleCopyLink}
+            onClick={handleCopySummary}
           >
-            {copyFeedback === 'copied' && '✓ Enlace copiado'}
+            {copyFeedback === 'copied' && '✓ Resumen copiado'}
             {copyFeedback === 'failed' && 'No se pudo copiar'}
-            {!copyFeedback && 'Copiar enlace'}
+            {!copyFeedback && 'Copiar resumen'}
           </button>
         </div>
-
-        <p className="text-xs text-gray-600 text-center mt-4">
-          El enlace comparte un resumen del presupuesto. Abrirlo todavía no recupera
-          el cálculo automáticamente — esa función llegará en una fase futura.
-        </p>
 
         <button
           onClick={onClose}

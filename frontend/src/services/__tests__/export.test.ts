@@ -1,47 +1,86 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import {
-  exportToPDF,
-  shareViaWhatsApp,
-  shareViaEmail,
-  generateShareUrl
-} from '../export';
-import { CalculationResponse } from '../../types';
+import { buildOrderText, exportToPDF, shareViaWhatsApp, shareViaEmail } from '../export';
+import type { OrderQuote, QuoteGroup } from '../../types';
+import { makeQuote, m2Product } from '../../test/fixtures';
 
-const mockCalculation: CalculationResponse = {
-  id: 'calc_1',
-  product: { id: 'prod_1', name: 'OSB Ligero 244x122', categoryName: 'OSB' },
-  board: { width: 244, height: 122, thickness: 12, area: 2.9768 },
-  requestedPieces: [{ width: 100, height: 80 }],
-  calculation: {
-    totalAreaNeeded: 0.8,
-    boardsNeeded: 0.3,
-    wastePercentage: 10,
-    pieceCount: 1,
-    averagePieceSize: 0.8
+const boardGroup: QuoteGroup = {
+  kind: 'BOARD',
+  product: {
+    id: m2Product.id,
+    sku: m2Product.sku,
+    name: 'Melamina Blanca 244x122',
+    unit: 'M2',
+    familyCode: 'MEL',
+    familyName: 'Melamina',
+    thickness: 16,
+    boardWidth: 244,
+    boardHeight: 122,
+    lengthCm: null
   },
-  pricing: { pricePerBoard: 45, boardsNeeded: 0.3, totalPrice: 13.5, currency: 'EUR' },
-  metadata: { calculatedAt: new Date().toISOString(), status: 'DRAFT' }
+  pieces: [{ width: 100, height: 80, quantity: 20 }],
+  pieceCount: 20,
+  usedAreaM2: 1.6,
+  boardAreaM2: 2.9768,
+  boardsNeeded: 1,
+  pricePerBoard: 46.14,
+  price: 46.14
 };
 
+const linearGroup: QuoteGroup = {
+  kind: 'LINEAR',
+  product: {
+    id: 'p_ml',
+    sku: 'PER-0003',
+    name: 'Perfil 2.4 m',
+    unit: 'ML',
+    familyCode: 'PER',
+    familyName: 'Perfiles',
+    thickness: null,
+    boardWidth: null,
+    boardHeight: null,
+    lengthCm: 240
+  },
+  quantity: 3,
+  lengthM: 2.4,
+  pricePerMeter: 5,
+  price: 36
+};
+
+const quote: OrderQuote = makeQuote({
+  groups: [boardGroup, ...makeQuote().groups, linearGroup],
+  total: 86.34
+});
+
 describe('export service', () => {
-  describe('generateShareUrl()', () => {
-    test('should build a URL with the calculation id as a query param', () => {
-      const url = generateShareUrl('calc_1');
-      expect(url).toBe(`${window.location.origin}?calc=calc_1`);
+  describe('buildOrderText()', () => {
+    test('lists every group by product name with its price and the total', () => {
+      const text = buildOrderText(quote);
+      expect(text).toContain('Melamina Blanca 244x122');
+      expect(text).toContain('1 tablero');
+      expect(text).toContain('46,14 EUR');
+      expect(text).toContain('Tornillo');
+      expect(text).toContain('12 x 0,35 EUR');
+      expect(text).toContain('Perfil 2.4 m');
+      expect(text).toContain('3 barras');
+      expect(text).toContain('Total: 86,34 EUR');
+    });
+
+    test('never mentions waste or utilisation', () => {
+      expect(buildOrderText(quote)).not.toMatch(/desperdicio|aprovechamiento|utilizaci/i);
     });
   });
 
   describe('exportToPDF()', () => {
     test('should reject since jsPDF is not installed yet', async () => {
-      await expect(exportToPDF(mockCalculation)).rejects.toThrow(/jsPDF/);
+      await expect(exportToPDF(quote)).rejects.toThrow(/jsPDF/);
     });
   });
 
   describe('shareViaWhatsApp()', () => {
-    test('should open a wa.me URL containing the product name and total price', () => {
+    test('should open a wa.me URL containing the order summary', () => {
       const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
-      shareViaWhatsApp(mockCalculation, 'https://example.com?calc=calc_1');
+      shareViaWhatsApp(quote);
 
       expect(openSpy).toHaveBeenCalledTimes(1);
       const [url, target] = openSpy.mock.calls[0];
@@ -49,9 +88,8 @@ describe('export service', () => {
       expect(target).toBe('_blank');
 
       const decoded = decodeURIComponent((url as string).split('text=')[1]);
-      expect(decoded).toContain('OSB Ligero 244x122');
-      expect(decoded).toContain('13.50');
-      expect(decoded).toContain('https://example.com?calc=calc_1');
+      expect(decoded).toContain('Melamina Blanca 244x122');
+      expect(decoded).toContain('Total: 86,34 EUR');
 
       openSpy.mockRestore();
     });
@@ -66,20 +104,18 @@ describe('export service', () => {
       });
     });
 
-    test('should set location.href to a mailto: URL with subject and body', () => {
-      shareViaEmail(mockCalculation, 'https://example.com?calc=calc_1');
+    test('should set location.href to a mailto: URL with subject and summary body', () => {
+      shareViaEmail(quote);
 
       expect(window.location.href).toContain('mailto:?subject=');
 
       const [, query] = window.location.href.split('?');
       const params = new URLSearchParams(query);
-      const body = decodeURIComponent(params.get('body') || '');
+      const body = params.get('body') || '';
 
-      expect(decodeURIComponent(params.get('subject') || '')).toContain(
-        'OSB Ligero 244x122'
-      );
-      expect(body).toContain('13.50');
-      expect(body).toContain('https://example.com?calc=calc_1');
+      expect(params.get('subject')).toContain('Presupuesto');
+      expect(body).toContain('Melamina Blanca 244x122');
+      expect(body).toContain('Total: 86,34 EUR');
     });
   });
 });
