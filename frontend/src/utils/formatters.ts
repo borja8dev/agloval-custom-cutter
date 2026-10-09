@@ -1,3 +1,5 @@
+import type { CatalogProduct, ProductUnit } from '../types';
+
 export function formatCurrency(value: number, currency: string = 'EUR'): string {
   const symbol = currency === 'EUR' ? '€' : `${currency} `;
   return `${symbol}${value.toFixed(2)}`;
@@ -53,4 +55,45 @@ export function formatTimeAgo(date: string | Date): string {
   if (diffDays < 7) return `Hace ${diffDays}d`;
 
   return formatDate(dateObj);
+}
+
+// Spanish-style decimal number (comma separator), independent of ICU data.
+export function formatDecimal(value: number, decimals: number = 2): string {
+  return value.toFixed(decimals).replace('.', ',');
+}
+
+const UNIT_LABELS: Record<ProductUnit, string> = {
+  M2: 'Tablero',
+  UD: 'Unidad',
+  ML: 'Barra',
+};
+
+export function unitLabel(unit: ProductUnit): string {
+  return UNIT_LABELS[unit];
+}
+
+// Fixed measure of a catalog product: board size (+ thickness) for M2, bar
+// length in metres for ML, nothing for UD.
+export function formatProductMeasure(product: CatalogProduct): string {
+  if (product.unit === 'M2' && product.standardWidth !== null && product.standardHeight !== null) {
+    const size = `${product.standardWidth} x ${product.standardHeight} cm`;
+    return product.thickness !== null ? `${size} · ${product.thickness} mm` : size;
+  }
+  if (product.unit === 'ML' && product.lengthCm !== null) {
+    return `${formatDecimal(product.lengthCm / 100)} m`;
+  }
+  return '';
+}
+
+export function formatProductPrice(product: CatalogProduct): string {
+  switch (product.unit) {
+    case 'M2':
+      return product.pricePerM2 !== null
+        ? `${formatDecimal(product.pricePerM2)} EUR/m2`
+        : `${formatDecimal(product.pricePerUnit)} EUR/tablero`;
+    case 'ML':
+      return `${formatDecimal(product.pricePerUnit)} EUR/m`;
+    default:
+      return `${formatDecimal(product.pricePerUnit)} EUR/ud`;
+  }
 }
