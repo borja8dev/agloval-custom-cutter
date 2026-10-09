@@ -21,8 +21,8 @@ describe('CalculationController - Integration', () => {
     requestedPieces: [{ width: 100, height: 100 }],
     calculation: {
       totalAreaNeeded: 1,
-      boardsNeeded: 0.2,
-      wastePercentage: 16.67,
+      boardsNeeded: 1,
+      wastePercentage: 83.33,
       pieceCount: 1,
       averagePieceSize: 1,
     },
@@ -51,6 +51,9 @@ describe('CalculationController - Integration', () => {
       getAll: jest.fn().mockResolvedValue([]),
       getById: jest.fn(),
       search: jest.fn(),
+      countAll: jest.fn().mockResolvedValue(0),
+      countSearch: jest.fn().mockResolvedValue(0),
+      listFamilies: jest.fn().mockResolvedValue([]),
     };
 
     app = createExpressApp(mockCalculationUseCase, mockProductUseCase);
@@ -197,7 +200,7 @@ describe('CalculationController - Integration', () => {
 
       await request(app).get('/api/products/search?q=melamina').expect(200);
 
-      expect(mockProductUseCase.search).toHaveBeenCalledWith('melamina', 50, 0);
+      expect(mockProductUseCase.search).toHaveBeenCalledWith('melamina', 50, 0, {});
       expect(mockProductUseCase.getById).not.toHaveBeenCalled();
     });
   });
@@ -300,7 +303,7 @@ describe('CalculationController - Integration', () => {
       const response = await request(app).get('/api/products?limit=10').expect(200);
 
       expect(response.body.data.count).toBe(1);
-      expect(mockProductUseCase.getAll).toHaveBeenCalledWith(10, 0);
+      expect(mockProductUseCase.getAll).toHaveBeenCalledWith(10, 0, {});
     });
   });
 

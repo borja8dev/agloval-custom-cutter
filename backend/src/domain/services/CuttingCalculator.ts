@@ -1,19 +1,28 @@
 import { Piece, BoardDimensions, CalculationResult } from '../types';
+import { MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM } from '../constants';
 import {
   InvalidPieceException,
   EmptyPiecesListException,
   InvalidBoardDimensionsException,
 } from '../exceptions/DomainException';
 
+export interface CuttingCalculatorOptions {
+  minPieceWidthCm?: number;
+  minPieceHeightCm?: number;
+}
+
 export class CuttingCalculator {
   private readonly boardDimensions: BoardDimensions;
   private readonly boardArea: number; // m²
-  private readonly minPieceDimension: number = 10; // cm (machine cutting constraint)
+  private readonly minPieceWidth: number; // cm (machine cutting constraint)
+  private readonly minPieceHeight: number; // cm (machine cutting constraint)
   private readonly maxPieceWidth: number; // cm (board width)
   private readonly maxPieceHeight: number; // cm (board height)
 
-  constructor(boardDimensions: BoardDimensions) {
+  constructor(boardDimensions: BoardDimensions, options: CuttingCalculatorOptions = {}) {
     this.validateBoardDimensions(boardDimensions);
+    this.minPieceWidth = options.minPieceWidthCm ?? MIN_PIECE_WIDTH_CM;
+    this.minPieceHeight = options.minPieceHeightCm ?? MIN_PIECE_HEIGHT_CM;
     this.boardDimensions = boardDimensions;
     this.boardArea = this.cmToM2(boardDimensions.width * boardDimensions.height);
     this.maxPieceWidth = boardDimensions.width;
@@ -83,12 +92,12 @@ export class CuttingCalculator {
       errors.push(`Height must be a positive number, got ${piece.height}`);
     }
 
-    if (piece.width < this.minPieceDimension) {
-      errors.push(`Width (${piece.width}cm) below minimum (${this.minPieceDimension}cm)`);
+    if (piece.width < this.minPieceWidth) {
+      errors.push(`Width (${piece.width}cm) below minimum (${this.minPieceWidth}cm)`);
     }
 
-    if (piece.height < this.minPieceDimension) {
-      errors.push(`Height (${piece.height}cm) below minimum (${this.minPieceDimension}cm)`);
+    if (piece.height < this.minPieceHeight) {
+      errors.push(`Height (${piece.height}cm) below minimum (${this.minPieceHeight}cm)`);
     }
 
     if (piece.width > this.maxPieceWidth) {
@@ -108,11 +117,12 @@ export class CuttingCalculator {
   }
 
   /**
-   * Ceiling to 0.1: 1.05 → 1.1, 1.15 → 1.2
+   * Whole boards (M2 products are sold by the board): 1.0 → 1, 1.05 → 2.
+   * The epsilon keeps float noise (e.g. 1.0000000000000002) from adding a board.
    */
   private calculateBoardsNeeded(totalAreaNeeded: number): number {
     const boardsExact = totalAreaNeeded / this.boardArea;
-    return Math.ceil(boardsExact * 10) / 10;
+    return Math.max(1, Math.ceil(boardsExact - 1e-9));
   }
 
   /**

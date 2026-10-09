@@ -7,6 +7,7 @@ import {
 import { CalculationRequestDTO } from '../dto/CalculationRequest';
 import { CalculationResponseDTO } from '../dto/CalculationResponse';
 import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
+import { priceBoards } from '../../domain/services/BoardPricing';
 import {
   ProductNotFoundException,
   CalculationNotFoundException,
@@ -44,7 +45,12 @@ export class CalculationApplicationService implements ICalculateUseCase {
     });
 
     const calculationResult = calculator.calculate(request.requestedPieces);
-    const totalPrice = calculationResult.boardsNeeded * product.pricePerUnit;
+    const { pricePerBoard, totalPrice } = priceBoards({
+      boards: calculationResult.boardsNeeded,
+      boardAreaM2: (product.standardWidth * product.standardHeight) / 10000,
+      pricePerM2: product.pricePerM2,
+      pricePerUnit: product.pricePerUnit,
+    });
 
     // Quotes are valid 30 days — a business rule, decided here (application
     // layer), not buried in the persistence mapper.
@@ -55,7 +61,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
       requestedPieces: request.requestedPieces,
       totalAreaNeeded: calculationResult.totalAreaNeeded,
       boardsUsed: calculationResult.boardsNeeded,
-      pricePerBoard: product.pricePerUnit,
+      pricePerBoard,
       totalPrice,
       userId: request.userId,
       status: 'DRAFT',
@@ -99,7 +105,14 @@ export class CalculationApplicationService implements ICalculateUseCase {
     });
 
     const calculationResult = calculator.calculate(requestedPieces);
-    const totalPrice = calculationResult.boardsNeeded * existing.pricePerBoard;
+    // A DRAFT update is a re-quote: price again from the product's current
+    // prices, so create and update always apply the same formula.
+    const { pricePerBoard, totalPrice } = priceBoards({
+      boards: calculationResult.boardsNeeded,
+      boardAreaM2: (existing.product.standardWidth * existing.product.standardHeight) / 10000,
+      pricePerM2: existing.product.pricePerM2,
+      pricePerUnit: existing.product.pricePerUnit,
+    });
 
     // update() enforces the DRAFT-only rule itself (single source of truth
     // for that invariant); it throws InvalidCalculationStatusException.
@@ -107,6 +120,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
       requestedPieces,
       totalAreaNeeded: calculationResult.totalAreaNeeded,
       boardsUsed: calculationResult.boardsNeeded,
+      pricePerBoard,
       totalPrice,
     });
 
@@ -130,7 +144,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
       board: {
         width: entity.product.standardWidth,
         height: entity.product.standardHeight,
-        thickness: entity.product.thickness ?? 0,
+        thickness: entity.product.thickness,
         area: boardArea,
       },
       requestedPieces: entity.requestedPieces,

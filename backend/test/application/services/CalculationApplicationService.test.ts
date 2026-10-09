@@ -32,12 +32,15 @@ describe('CalculationApplicationService', () => {
         thickness: 18,
         lengthCm: null,
         pricePerUnit: 100,
-        pricePerM2: null,
+        pricePerM2: 10,
         currency: 'EUR',
       }),
       findAll: jest.fn(),
       findByCategory: jest.fn(),
       search: jest.fn(),
+      count: jest.fn(),
+      countSearch: jest.fn(),
+      listFamilies: jest.fn(),
     };
 
     // Echoes back what calculate() actually computed, as a real repository
@@ -65,6 +68,8 @@ describe('CalculationApplicationService', () => {
               standardWidth: 300,
               standardHeight: 200,
               thickness: 18,
+              pricePerUnit: 100,
+              pricePerM2: 10,
               category: { name: 'Melamina' },
             },
           })
@@ -94,8 +99,9 @@ describe('CalculationApplicationService', () => {
       expect(response).toBeDefined();
       expect(response.id).toBeDefined();
       expect(response.product.name).toBe('Melamina Blanca 300x200');
-      expect(response.calculation.boardsNeeded).toBe(1.2);
-      expect(response.pricing.totalPrice).toBe(120); // 1.2 x 100
+      expect(response.calculation.boardsNeeded).toBe(2); // 7 m2 / 6 m2 -> 2 whole boards
+      expect(response.pricing.pricePerBoard).toBe(60); // 6 m2 x 10 EUR/m2
+      expect(response.pricing.totalPrice).toBe(120); // 2 boards x 60
       expect(response.pricing.currency).toBe('EUR');
       expect(response.metadata.status).toBe('DRAFT');
     });
@@ -106,6 +112,9 @@ describe('CalculationApplicationService', () => {
         findAll: jest.fn(),
         findByCategory: jest.fn(),
         search: jest.fn(),
+        count: jest.fn(),
+        countSearch: jest.fn(),
+        listFamilies: jest.fn(),
       };
 
       const serviceNotFound = new CalculationApplicationService(
@@ -119,6 +128,43 @@ describe('CalculationApplicationService', () => {
       };
 
       await expect(serviceNotFound.calculate(request)).rejects.toThrow(ProductNotFoundException);
+    });
+
+    test('should bill whole boards at pricePerM2 and snapshot the whole-board price', async () => {
+      (mockProductRepo.findById as jest.Mock).mockResolvedValue({
+        ...(await mockProductRepo.findById('prod_1')),
+        pricePerUnit: 999,
+        pricePerM2: 12.34,
+      });
+
+      await service.calculate({
+        productId: 'prod_1',
+        requestedPieces: [
+          { width: 300, height: 200 },
+          { width: 30, height: 20 },
+        ], // slightly above one board -> 2 boards
+      });
+
+      // 6 m2 x 12.34 = 74.04 per board; 2 boards = 148.08
+      expect(mockCalculationRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ boardsUsed: 2, pricePerBoard: 74.04, totalPrice: 148.08 })
+      );
+    });
+
+    test('should fall back to pricePerUnit when pricePerM2 is null (legacy rows)', async () => {
+      (mockProductRepo.findById as jest.Mock).mockResolvedValue({
+        ...(await mockProductRepo.findById('prod_1')),
+        pricePerUnit: 100,
+        pricePerM2: null,
+      });
+
+      const response = await service.calculate({
+        productId: 'prod_1',
+        requestedPieces: [{ width: 100, height: 100 }],
+      });
+
+      expect(response.pricing.pricePerBoard).toBe(100);
+      expect(response.pricing.totalPrice).toBe(100);
     });
 
     test('should reject a non-M2 product', async () => {
@@ -153,8 +199,8 @@ describe('CalculationApplicationService', () => {
 
       const response = await service.calculate(request);
 
-      // 1 m² needed, 0.2 boards purchased (1.2 m² available) -> waste ~= 16.67%
-      expect(response.calculation.wastePercentage).toBeCloseTo(16.67, 1);
+      // 1 m² needed out of 1 whole board (6 m²) -> waste ~= 83.33%
+      expect(response.calculation.wastePercentage).toBeCloseTo(83.33, 1);
     });
 
     test('should preserve requested pieces in response', async () => {
@@ -207,6 +253,8 @@ describe('CalculationApplicationService', () => {
           standardWidth: 300,
           standardHeight: 200,
           thickness: 18,
+          pricePerUnit: 100,
+          pricePerM2: 10,
           category: { name: 'Test Category' },
         },
       };
@@ -217,6 +265,34 @@ describe('CalculationApplicationService', () => {
 
       expect(response.id).toBe('calc_1');
       expect(response.product.name).toBe('Test Product');
+    });
+
+    test('should keep a null thickness as null instead of coercing it to 0', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'calc_2',
+        productId: 'prod_1',
+        requestedPieces: [{ width: 100, height: 100 }],
+        totalAreaNeeded: 1,
+        boardsUsed: 1,
+        pricePerBoard: 60,
+        totalPrice: 60,
+        status: 'DRAFT',
+        createdAt: new Date(),
+        product: {
+          id: 'prod_1',
+          name: 'No thickness',
+          standardWidth: 300,
+          standardHeight: 200,
+          thickness: null,
+          pricePerUnit: 100,
+          pricePerM2: 10,
+          category: { name: 'Test Category' },
+        },
+      } satisfies CalculationRecord);
+
+      const response = await service.getCalculation('calc_2');
+
+      expect(response.board.thickness).toBeNull();
     });
 
     test('should throw CalculationNotFoundException if calculation not found', async () => {
@@ -244,6 +320,8 @@ describe('CalculationApplicationService', () => {
           standardWidth: 300,
           standardHeight: 200,
           thickness: 18,
+          pricePerUnit: 100,
+          pricePerM2: 10,
           category: { name: 'Test' },
         },
       };
@@ -279,6 +357,8 @@ describe('CalculationApplicationService', () => {
         standardWidth: 300,
         standardHeight: 200,
         thickness: 18,
+        pricePerUnit: 100,
+        pricePerM2: 10,
         category: { name: 'Test Category' },
       },
     };
@@ -292,7 +372,7 @@ describe('CalculationApplicationService', () => {
       const newPieces = [
         { width: 200, height: 100 },
         { width: 200, height: 100 },
-      ]; // 4 m² on a 6 m² board -> 0.7 boards
+      ]; // 4 m² on a 6 m² board -> 1 whole board
 
       const response = await service.updateCalculation('calc_1', newPieces);
 
@@ -301,11 +381,50 @@ describe('CalculationApplicationService', () => {
         expect.objectContaining({
           requestedPieces: newPieces,
           totalAreaNeeded: 4,
-          boardsUsed: 0.7,
-          totalPrice: 70, // 0.7 x pricePerBoard(100)
+          boardsUsed: 1,
+          pricePerBoard: 60, // 6 m2 x 10 EUR/m2
+          totalPrice: 60,
         })
       );
       expect(response.requestedPieces).toEqual(newPieces);
+    });
+
+    test('should re-quote a multi-board update with a single final rounding', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue({
+        ...existingEntity,
+        product: { ...existingEntity.product, pricePerM2: 12.34 },
+      });
+      (mockCalculationRepo.update as jest.Mock).mockImplementation((_id, data) =>
+        Promise.resolve({ ...existingEntity, ...data })
+      );
+
+      await service.updateCalculation('calc_1', [
+        { width: 300, height: 200 },
+        { width: 300, height: 200 },
+        { width: 30, height: 20 },
+      ]); // 3 boards of 6 m2
+
+      expect(mockCalculationRepo.update).toHaveBeenCalledWith(
+        'calc_1',
+        expect.objectContaining({ boardsUsed: 3, pricePerBoard: 74.04, totalPrice: 222.12 })
+      );
+    });
+
+    test('should fall back to pricePerUnit on update when pricePerM2 is null', async () => {
+      (mockCalculationRepo.findById as jest.Mock).mockResolvedValue({
+        ...existingEntity,
+        product: { ...existingEntity.product, pricePerM2: null, pricePerUnit: 80 },
+      });
+      (mockCalculationRepo.update as jest.Mock).mockImplementation((_id, data) =>
+        Promise.resolve({ ...existingEntity, ...data })
+      );
+
+      await service.updateCalculation('calc_1', [{ width: 100, height: 100 }]);
+
+      expect(mockCalculationRepo.update).toHaveBeenCalledWith(
+        'calc_1',
+        expect.objectContaining({ boardsUsed: 1, pricePerBoard: 80, totalPrice: 80 })
+      );
     });
 
     test('should throw CalculationNotFoundException if the calculation does not exist', async () => {

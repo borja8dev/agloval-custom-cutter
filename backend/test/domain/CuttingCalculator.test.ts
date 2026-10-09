@@ -1,4 +1,5 @@
 import { CuttingCalculator } from '../../src/domain/services/CuttingCalculator';
+import { MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM } from '../../src/domain/constants';
 import {
   InvalidPieceException,
   EmptyPiecesListException,
@@ -26,7 +27,7 @@ describe('CuttingCalculator', () => {
       expect(result.isValid).toBe(true);
     });
 
-    test('should calculate 2 identical pieces requiring 0.7 boards', () => {
+    test('should calculate 2 identical pieces requiring 1 whole board', () => {
       const pieces = [
         { width: 200, height: 100 },
         { width: 200, height: 100 },
@@ -34,13 +35,13 @@ describe('CuttingCalculator', () => {
       const result = calculator.calculate(pieces);
 
       expect(result.totalAreaNeeded).toBeCloseTo(4, 4);
-      expect(result.boardsNeeded).toBe(0.7); // 4 / 6 = 0.667 -> ceil to 0.7
+      expect(result.boardsNeeded).toBe(1); // 4 / 6 = 0.667 -> whole board
       expect(result.pieceCount).toBe(2);
       expect(result.wastePercentage).toBeGreaterThan(0);
       expect(result.wastePercentage).toBeLessThan(100);
     });
 
-    test('should calculate 3 pieces needing 1.2 boards (classic example)', () => {
+    test('should calculate 3 pieces needing 2 whole boards (classic example)', () => {
       const pieces = [
         { width: 200, height: 100 }, // 2 m²
         { width: 200, height: 100 }, // 2 m²
@@ -49,17 +50,17 @@ describe('CuttingCalculator', () => {
       const result = calculator.calculate(pieces);
 
       expect(result.totalAreaNeeded).toBeCloseTo(7, 4);
-      expect(result.boardsNeeded).toBe(1.2); // 7 / 6 = 1.167 -> ceil to 1.2
-      expect(result.wastePercentage).toBeLessThan(30);
+      expect(result.boardsNeeded).toBe(2); // 7 / 6 = 1.167 -> 2 whole boards
+      expect(result.wastePercentage).toBeCloseTo(41.67, 1); // 5 / 12
       expect(result.pieceCount).toBe(3);
     });
 
     test('should calculate very small piece', () => {
-      const pieces = [{ width: 10, height: 10 }];
+      const pieces = [{ width: 20, height: 20 }];
       const result = calculator.calculate(pieces);
 
-      expect(result.totalAreaNeeded).toBeCloseTo(0.01, 4);
-      expect(result.boardsNeeded).toBe(0.1);
+      expect(result.totalAreaNeeded).toBeCloseTo(0.04, 4);
+      expect(result.boardsNeeded).toBe(1);
       expect(result.isValid).toBe(true);
     });
 
@@ -71,7 +72,7 @@ describe('CuttingCalculator', () => {
 
       expect(result.pieceCount).toBe(20);
       expect(result.totalAreaNeeded).toBeCloseTo(5.0, 4); // 20 x 0.25 m²
-      expect(result.boardsNeeded).toBe(0.9); // 5 / 6 = 0.833 -> ceil to 0.9
+      expect(result.boardsNeeded).toBe(1); // 5 / 6 = 0.833 -> 1 whole board
     });
   });
 
@@ -91,7 +92,12 @@ describe('CuttingCalculator', () => {
     });
 
     test('should throw InvalidPieceException for piece below minimum width', () => {
-      const pieces = [{ width: 5, height: 100 }]; // min is 10cm
+      const pieces = [{ width: 1, height: 100 }]; // min width is 2cm
+      expect(() => calculator.calculate(pieces)).toThrow(InvalidPieceException);
+    });
+
+    test('should throw InvalidPieceException for piece below minimum height', () => {
+      const pieces = [{ width: 100, height: 10 }]; // min height is 15cm
       expect(() => calculator.calculate(pieces)).toThrow(InvalidPieceException);
     });
 
@@ -148,16 +154,48 @@ describe('CuttingCalculator', () => {
       expect(result.wastePercentage).toBe(0);
     });
 
-    test('should accept minimum piece size (10cm x 10cm)', () => {
-      const pieces = [{ width: 10, height: 10 }];
-      const result = calculator.calculate(pieces);
-      expect(result.isValid).toBe(true);
-      expect(result.boardsNeeded).toBe(0.1);
+    test('should expose the minimum piece size as 2cm x 15cm', () => {
+      expect(MIN_PIECE_WIDTH_CM).toBe(2);
+      expect(MIN_PIECE_HEIGHT_CM).toBe(15);
     });
 
-    test('should reject piece 9.99cm (below minimum)', () => {
-      const pieces = [{ width: 9.99, height: 100 }];
-      expect(() => calculator.calculate(pieces)).toThrow(InvalidPieceException);
+    test('should accept the minimum piece size (2cm wide x 15cm high)', () => {
+      const pieces = [{ width: 2, height: 15 }];
+      const result = calculator.calculate(pieces);
+      expect(result.isValid).toBe(true);
+      expect(result.boardsNeeded).toBe(1);
+    });
+
+    test('should reject a piece 1.99cm wide (below minimum width)', () => {
+      expect(() => calculator.calculate([{ width: 1.99, height: 100 }])).toThrow(
+        InvalidPieceException
+      );
+    });
+
+    test('should reject a piece 14.99cm high (below minimum height)', () => {
+      expect(() => calculator.calculate([{ width: 100, height: 14.99 }])).toThrow(
+        InvalidPieceException
+      );
+    });
+
+    test('should not auto-rotate: 15cm wide x 2cm high is rejected', () => {
+      expect(() => calculator.calculate([{ width: 15, height: 2 }])).toThrow(InvalidPieceException);
+    });
+
+    test('should name the violated minimum in the error message', () => {
+      expect(() => calculator.calculate([{ width: 1, height: 10 }])).toThrow(
+        /Width \(1cm\) below minimum \(2cm\).*Height \(10cm\) below minimum \(15cm\)/
+      );
+    });
+
+    test('should accept custom minimums through the constructor options', () => {
+      const strict = new CuttingCalculator(standardBoard, {
+        minPieceWidthCm: 50,
+        minPieceHeightCm: 60,
+      });
+      expect(() => strict.calculate([{ width: 49, height: 100 }])).toThrow(InvalidPieceException);
+      expect(() => strict.calculate([{ width: 50, height: 59 }])).toThrow(InvalidPieceException);
+      expect(strict.calculate([{ width: 50, height: 60 }]).isValid).toBe(true);
     });
 
     test('should handle decimal dimensions (precision)', () => {
@@ -181,8 +219,8 @@ describe('CuttingCalculator', () => {
     test('should calculate waste for partial board use', () => {
       const pieces = [{ width: 100, height: 100 }];
       const result = calculator.calculate(pieces);
-      // 1 m² needed, 0.2 boards purchased (1.2 m² available) -> waste = 0.2 / 1.2 * 100 ~= 16.67%
-      expect(result.wastePercentage).toBeCloseTo(16.67, 1);
+      // 1 m² needed of 1 whole board (6 m²) -> waste = 5 / 6 * 100 ~= 83.33%
+      expect(result.wastePercentage).toBeCloseTo(83.33, 1);
     });
 
     test('waste should never exceed 100% or drop below 0%', () => {
@@ -196,34 +234,45 @@ describe('CuttingCalculator', () => {
     });
   });
 
-  describe('Boards needed (ceiling to 0.1)', () => {
-    // A single piece can never need >1.0 boards without exceeding the board's
+  describe('Boards needed (whole boards)', () => {
+    // A single piece can never need >1 board without exceeding the board's
     // own dimensions (which validatePiece forbids) — these ratios need multiple pieces.
-    test('1.05 boards should ceil to 1.1', () => {
+    test('exactly one board stays 1', () => {
+      const result = calculator.calculate([{ width: 300, height: 200 }]);
+      expect(result.boardsNeeded).toBe(1);
+    });
+
+    test('used area slightly above one board needs 2 boards', () => {
       const pieces = [
         { width: 300, height: 200 }, // 6 m² (full board)
-        { width: 30, height: 100 }, // 0.3 m²
-      ]; // 6.3 m² / 6 m² = 1.05
+        { width: 30, height: 20 }, // 0.06 m²
+      ];
       const result = calculator.calculate(pieces);
-      expect(result.boardsNeeded).toBe(1.1);
+      expect(result.boardsNeeded).toBe(2);
     });
 
-    test('1.15 boards should ceil to 1.2', () => {
+    test('a tiny overflow of 0.0001 m2 still needs 2 boards', () => {
       const pieces = [
-        { width: 300, height: 200 }, // 6 m²
-        { width: 90, height: 100 }, // 0.9 m²
-      ]; // 6.9 m² / 6 m² = 1.15
-      const result = calculator.calculate(pieces);
-      expect(result.boardsNeeded).toBe(1.2);
+        { width: 300, height: 200 },
+        { width: 2, height: 50 }, // 100 cm2 = 0.01 m2
+      ];
+      expect(calculator.calculate(pieces).boardsNeeded).toBe(2);
     });
 
-    test('2.0 boards should stay 2.0', () => {
+    test('exactly two boards stays 2', () => {
       const pieces = [
-        { width: 300, height: 200 }, // 6 m²
-        { width: 300, height: 200 }, // 6 m²
-      ]; // 12 m² / 6 m² = 2.0
-      const result = calculator.calculate(pieces);
-      expect(result.boardsNeeded).toBe(2.0);
+        { width: 300, height: 200 },
+        { width: 300, height: 200 },
+      ];
+      expect(calculator.calculate(pieces).boardsNeeded).toBe(2);
+    });
+
+    test('boards needed is always a whole number', () => {
+      const result = calculator.calculate([
+        { width: 123.4, height: 56.7 },
+        { width: 80, height: 90 },
+      ]);
+      expect(Number.isInteger(result.boardsNeeded)).toBe(true);
     });
   });
 

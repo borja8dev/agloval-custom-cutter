@@ -17,7 +17,7 @@ export interface CalculationResponseDTO {
   board: {
     width: number; // cm
     height: number; // cm
-    thickness: number; // mm
+    thickness: number | null; // mm (null when the catalog has no thickness)
     area: number; // m²
   };
 
@@ -30,7 +30,7 @@ export interface CalculationResponseDTO {
   /** Output of CuttingCalculator. */
   calculation: {
     totalAreaNeeded: number; // m²
-    boardsNeeded: number; // 1.2 = 1 board + 20%
+    boardsNeeded: number; // whole boards billed
     wastePercentage: number; // %
     pieceCount: number;
     averagePieceSize: number; // m²
@@ -39,11 +39,12 @@ export interface CalculationResponseDTO {
   /**
    * MIGRATION: pricePerBoard is captured at calculation time so a
    * calculation can be audited later (what was the price 3 months ago?).
+   * It is the whole-board price (board area × pricePerM2, 2 decimals).
    */
   pricing: {
     pricePerBoard: number; // €
     boardsNeeded: number; // same as calculation.boardsNeeded
-    totalPrice: number; // € = pricePerBoard × boardsNeeded
+    totalPrice: number; // € = boardsNeeded × board area × pricePerM2, rounded once
     currency: string; // "EUR"
   };
 
