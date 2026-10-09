@@ -23,7 +23,9 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 - [ ] T6 docs: MIGRATION_GUIDE + ERD; validate counts (2001/607/82, 62 families) after user OK
 - [x] T7a backend catalog API: GET /api/families, family/unit filters on products, product DTO with sku/unit/family, min piece 2x15 cm, M2 billed by whole boards at pricePerM2, null-dimension hardening (branch feat/catalog-api-filters, commit 97dbb00; route: delegated writer; RED observed for the domain suites only, the other suites were written first but their RED was not observed; GREEN: 22 suites / 268 tests, tsc and lint clean. Native review: medium tier, 1285 lines; the reliability lens failed twice on the 32000 output token limit, so by the user's decision the review was abandoned and T7a ships verified by tests only)
 - [x] T7b backend order quote: stateless POST /api/orders/quote with M2 groups, UD and ML lines, total (branch feat/order-quote-api, commits 21d1161 and 2282f75; route: delegated writer, RED observed for all six suites (compile failures for the two existing ones); GREEN: 26 suites / 324 tests, tsc and lint clean. Native review offered (medium, 1200 lines) and skipped by the user)
-- [ ] T8 frontend: FamilySelect/ProductList, unit-aware form, order summary, grouped history, remove AreaVisualizer/waste
+- [ ] T8a frontend data and state: types, API client (families, product filters, order quote), hooks (useFamilies, useProducts by family, useOrderQuote, useOrder, useOrderHistory with numbered orders in localStorage) (branch feat/frontend-order-data)
+- [ ] T8b frontend components: FamilySelect, ProductList with in-order badge, unit-aware line form, order summary with sticky total, grouped history with reorder, internal scroll
+- [ ] T8c frontend page: stacked full-width layout, remove AreaVisualizer/waste/CartPreview/PriceDisplay, adapt export/share
 - [ ] T9 rewrite Cypress specs
 
 ## Route per task
@@ -35,4 +37,5 @@ Pending (record inline/delegated and trigger evidence as each task starts).
 - Review boundary advances to 757cd70. Next review base is that commit.
 - Advisory follow-ups worth doing in T7: null-dimension handling in CalculationApplicationService (lines 32-38, 130-133, flagged by two lenses), DB name parsing in backup-db.sh, runImport.ts size and structure.
 - Decision (user): M2 is charged by whole boards: boards = ceil(used area / board area), price = boards x board area x pricePerM2.
+- Review mode: user asked to disable it for this clone (clone-local off) after repeated consent prompts on the accumulated branch. Ordinary checks (tests, lint, build) still apply.
 - Not blocking T7: user is reviewing backend/data/families.json before `--apply` on the dev DB.
