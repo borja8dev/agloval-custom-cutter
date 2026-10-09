@@ -66,6 +66,39 @@ describe('ProductRepository - Integration', () => {
     });
   });
 
+  describe('findByIds()', () => {
+    beforeEach(async () => {
+      await prisma.product.create({
+        data: { id: 'prod_ud_a', sku: 'UD-A', name: 'A', categoryId, unit: 'UD', pricePerUnit: 1 },
+      });
+    });
+
+    test('returns every matching product with its family in one call', async () => {
+      const products = await repo.findByIds(['prod_test_1', 'prod_ud_a']);
+
+      expect(products.map((p) => p.id).sort()).toEqual(['prod_test_1', 'prod_ud_a']);
+      expect(products.find((p) => p.id === 'prod_ud_a')).toMatchObject({
+        unit: 'UD',
+        familyCode: 'TESTCAT',
+        pricePerUnit: 1,
+      });
+    });
+
+    test('silently skips ids that do not exist', async () => {
+      const products = await repo.findByIds(['prod_test_1', 'prod_missing']);
+      expect(products.map((p) => p.id)).toEqual(['prod_test_1']);
+    });
+
+    test('returns each product once even when the input repeats an id', async () => {
+      const products = await repo.findByIds(['prod_test_1', 'prod_test_1', 'prod_test_1']);
+      expect(products).toHaveLength(1);
+    });
+
+    test('returns an empty list for an empty input', async () => {
+      expect(await repo.findByIds([])).toEqual([]);
+    });
+  });
+
   describe('non-board products', () => {
     test('persists and reads back a UD product with null dimensions', async () => {
       await prisma.product.create({

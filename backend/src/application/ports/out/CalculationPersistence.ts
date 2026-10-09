@@ -71,6 +71,8 @@ export interface CalculationRecord {
 
 export interface IProductRepository {
   findById(productId: string): Promise<ProductRecord | null>;
+  /** Existing products among the ids, one each, in no particular order. Unknown ids are skipped. */
+  findByIds(productIds: string[]): Promise<ProductRecord[]>;
   findAll(limit?: number, skip?: number, filter?: ProductFilter): Promise<ProductRecord[]>;
   findByCategory(categoryId: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
   search(

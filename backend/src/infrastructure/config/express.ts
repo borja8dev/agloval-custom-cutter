@@ -1,17 +1,21 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import { createCalculationRoutes } from '../web/routes/calculations.routes';
+import { createOrderRoutes } from '../web/routes/orders.routes';
 import { createFamilyRoutes, createProductRoutes } from '../web/routes/products.routes';
 import { CalculationController } from '../web/controllers/CalculationController';
+import { OrderQuoteController } from '../web/controllers/OrderQuoteController';
 import { ProductController } from '../web/controllers/ProductController';
 import { requestLogger, responseTime } from '../web/middleware/logging';
 import { errorHandler } from '../web/middleware/errorHandler';
 import { ICalculateUseCase } from '../../application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../application/ports/in/ProductUseCase';
+import { IOrderQuoteUseCase } from '../../application/ports/in/OrderQuoteUseCase';
 
 export function createExpressApp(
   calculationUseCase: ICalculateUseCase,
-  productUseCase: IProductUseCase
+  productUseCase: IProductUseCase,
+  orderQuoteUseCase: IOrderQuoteUseCase
 ): Express {
   const app = express();
 
@@ -34,9 +38,11 @@ export function createExpressApp(
 
   const calculationController = new CalculationController(calculationUseCase);
   const productController = new ProductController(productUseCase);
+  const orderQuoteController = new OrderQuoteController(orderQuoteUseCase);
 
   app.use('/api/calculations', createCalculationRoutes(calculationController));
   app.use('/api/products', createProductRoutes(productController));
+  app.use('/api/orders', createOrderRoutes(orderQuoteController));
   app.use('/api/families', createFamilyRoutes(productController));
 
   app.use((req, res) => {

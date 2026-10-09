@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { createExpressApp } from './infrastructure/config/express';
 import { CalculationApplicationService } from './application/services/CalculationApplicationService';
+import { QuoteOrderService } from './application/services/QuoteOrderService';
 import { ProductUseCaseAdapter } from './application/services/ProductUseCaseAdapter';
 import { ProductRepository } from './infrastructure/persistence/repositories/ProductRepository';
 import { CalculationRepository } from './infrastructure/persistence/repositories/CalculationRepository';
@@ -25,7 +26,9 @@ async function main(): Promise<void> {
   );
   const productUseCase = new ProductUseCaseAdapter(productRepository);
 
-  const app = createExpressApp(calculationService, productUseCase);
+  const orderQuoteService = new QuoteOrderService(productRepository);
+
+  const app = createExpressApp(calculationService, productUseCase, orderQuoteService);
 
   const PORT = process.env.PORT || 5000;
   const server = app.listen(PORT, () => {

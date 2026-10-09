@@ -131,6 +131,98 @@ Reading or updating a calculation whose product has no board dimensions (a data-
 
 ---
 
+## Orders
+
+### `POST /api/orders/quote`
+
+Prices a whole order made of lines for different products. **Stateless**: nothing is stored, the client re-sends the full order on every change. Returns `200` (no resource is created).
+
+**Body:**
+
+```json
+{
+  "lines": [
+    { "productId": "clv9t1a2k0001zzz9qqqqqqqq", "pieces": [{ "width": 100, "height": 80, "quantity": 20 }, { "width": 50, "height": 30 }] },
+    { "productId": "clv9t1a2k0002zzz9qqqqqqqq", "quantity": 12 }
+  ]
+}
+```
+
+- `lines`: 1-100 lines. Several lines for the same product are merged before pricing: for `M2` the pieces of all its lines share the same boards, for `UD`/`ML` the quantities are summed. Groups in the response are ordered by first appearance.
+- `M2` product: the line must have `pieces` (1-200) and no `quantity`. Each piece is `{ width, height, quantity? }` in cm (decimals allowed), `quantity` an integer 1-10000 defaulting to 1 (N identical pieces). Same limits as `POST /api/calculations`: at least **2 cm wide x 15 cm high** and not larger than the board.
+- `UD` or `ML` product: the line must have an integer `quantity` 1-100000 and no `pieces`.
+
+**Pricing:** every amount is computed in integer cents with a single rounding per group; `total` is the sum of the group prices, never a re-rounded float sum.
+
+- `BOARD` (`M2`): whole boards at `pricePerM2` (legacy `pricePerUnit` per board when `pricePerM2` is null), exactly like `POST /api/calculations`. `pieceCount` counts every copy, `usedAreaM2` is the area of all pieces, `boardsNeeded` the whole boards billed.
+- `UNIT` (`UD`): `price = unitPrice x quantity`.
+- `LINEAR` (`ML`): `pricePerUnit` is the price per **metre**, `price = pricePerMeter x lengthM x quantity` where `quantity` is the number of bars and `lengthM` the length of one bar.
+
+```bash
+curl -X POST http://localhost:5000/api/orders/quote \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lines": [
+      { "productId": "clv9t1a2k0001zzz9qqqqqqqq", "pieces": [{ "width": 100, "height": 80, "quantity": 20 }, { "width": 50, "height": 30 }] },
+      { "productId": "clv9t1a2k0002zzz9qqqqqqqq", "quantity": 12 },
+      { "productId": "clv9t1a2k0003zzz9qqqqqqqq", "quantity": 3 }
+    ]
+  }'
+```
+
+**Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "groups": [
+      {
+        "kind": "BOARD",
+        "product": { "id": "clv9t1a2k0001zzz9qqqqqqqq", "sku": "MEL-0001", "name": "Melamina Blanca 244x122", "unit": "M2", "familyCode": "MEL", "familyName": "Melamina", "thickness": 16, "boardWidth": 244, "boardHeight": 122, "lengthCm": null },
+        "pieces": [{ "width": 100, "height": 80, "quantity": 20 }, { "width": 50, "height": 30, "quantity": 1 }],
+        "pieceCount": 21,
+        "usedAreaM2": 16.15,
+        "boardAreaM2": 2.9768,
+        "boardsNeeded": 6,
+        "pricePerBoard": 46.14,
+        "price": 276.84
+      },
+      {
+        "kind": "UNIT",
+        "product": { "id": "clv9t1a2k0002zzz9qqqqqqqq", "sku": "FER-0012", "name": "Tornillo", "unit": "UD", "familyCode": "FER", "familyName": "Ferreteria", "thickness": null, "boardWidth": null, "boardHeight": null, "lengthCm": null },
+        "quantity": 12,
+        "unitPrice": 0.35,
+        "price": 4.2
+      },
+      {
+        "kind": "LINEAR",
+        "product": { "id": "clv9t1a2k0003zzz9qqqqqqqq", "sku": "PER-0003", "name": "Perfil 2.4 m", "unit": "ML", "familyCode": "PER", "familyName": "Perfiles", "thickness": null, "boardWidth": null, "boardHeight": null, "lengthCm": 240 },
+        "quantity": 3,
+        "lengthM": 2.4,
+        "pricePerMeter": 5,
+        "price": 36
+      }
+    ],
+    "total": 317.04,
+    "currency": "EUR",
+    "calculatedAt": "2026-10-09T10:00:00.000Z"
+  }
+}
+```
+
+`wastePercentage` is intentionally not part of this response. The `product` object has the same shape in every group; `boardWidth`/`boardHeight` are set for `M2` only and `lengthCm` for `ML` only.
+
+**Errors:**
+
+- `404 PRODUCT_NOT_FOUND`: a line references an unknown product.
+- `400 INVALID_ORDER_LINE`: the line does not fit the product's unit (pieces on a `UD`/`ML` product, or a quantity on an `M2` product). The message names the product and its unit.
+- `400 VALIDATION_ERROR`: malformed body (empty or oversized `lines`, a line with both or neither of `pieces`/`quantity`, a non-integer or out-of-range quantity, a piece below the 2 x 15 cm minimum, an invalid product id).
+- `400 INVALID_PIECE`: a piece is larger than the board of its product.
+- `500 INCOMPLETE_PRODUCT`: a catalog product lacks board dimensions (`M2`) or bar length (`ML`).
+
+---
+
 ## Families
 
 ### `GET /api/families`
@@ -240,6 +332,7 @@ curl http://localhost:5000/health
 | `INVALID_BOARD_DIMENSIONS` | 400 | (Internal — a product's own board dimensions are invalid) |
 | `QUERY_VALIDATION_ERROR` | 400 | Query params failed validation (e.g. unknown `unit`) |
 | `UNSUPPORTED_PRODUCT_UNIT` | 400 | A calculation was requested for a non-M2 product |
+| `INVALID_ORDER_LINE` | 400 | An order quote line does not fit its product's unit |
 | `INVALID_QUERY` | 400 | Search query too short |
 | `DUPLICATE_ENTRY` | 409 | Prisma unique-constraint violation |
 | `INVALID_CALCULATION_STATUS` | 409 | Update/delete attempted on a non-DRAFT calculation |
@@ -250,4 +343,5 @@ curl http://localhost:5000/health
 | `NOT_FOUND` | 404 | Unknown route |
 | `INVALID_DATA` | 400 | Any other Prisma request error, translated |
 | `MISSING_BOARD_DIMENSIONS` | 500 | A stored calculation references a product without board dimensions |
+| `INCOMPLETE_PRODUCT` | 500 | An order quote references a product without board dimensions (M2) or bar length (ML) |
 | `INTERNAL_SERVER_ERROR` | 500 | Unhandled error — message only shown outside production |

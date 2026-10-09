@@ -47,6 +47,17 @@ export class ProductRepository implements IProductRepository {
     return product ? ProductMapper.toDomain(product) : null;
   }
 
+  async findByIds(productIds: string[]): Promise<ProductRecord[]> {
+    if (productIds.length === 0) return [];
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: [...new Set(productIds)] } },
+      include: { category: true },
+    });
+
+    return ProductMapper.toDomainArray(products);
+  }
+
   async findAll(
     limit: number = 50,
     skip: number = 0,

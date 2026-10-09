@@ -35,6 +35,7 @@ describe('CalculationApplicationService', () => {
         pricePerM2: 10,
         currency: 'EUR',
       }),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       findByCategory: jest.fn(),
       search: jest.fn(),
@@ -109,6 +110,7 @@ describe('CalculationApplicationService', () => {
     test('should throw ProductNotFoundException if product not found', async () => {
       const mockRepoNotFound: IProductRepository = {
         findById: jest.fn().mockResolvedValue(null),
+        findByIds: jest.fn(),
         findAll: jest.fn(),
         findByCategory: jest.fn(),
         search: jest.fn(),

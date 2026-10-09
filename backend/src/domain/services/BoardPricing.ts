@@ -12,7 +12,7 @@ export interface BoardPricingResult {
   totalPrice: number;
 }
 
-const toCents = (euros: number): number => Math.round(euros * 100);
+export const toCents = (euros: number): number => Math.round(euros * 100);
 
 /**
  * Prices M2 products by whole boards at pricePerM2. Works in integer cents
