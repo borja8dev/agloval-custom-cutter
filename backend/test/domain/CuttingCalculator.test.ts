@@ -234,7 +234,7 @@ describe('CuttingCalculator', () => {
     });
   });
 
-  describe('Boards needed (whole boards)', () => {
+  describe('Boards needed (informational, whole number)', () => {
     // A single piece can never need >1 board without exceeding the board's
     // own dimensions (which validatePiece forbids) — these ratios need multiple pieces.
     test('exactly one board stays 1', () => {
@@ -344,7 +344,7 @@ describe('CuttingCalculator', () => {
       expect(result.boardsNeeded).toBe(1);
     });
 
-    test('bills whole boards for large quantities', () => {
+    test('counts boards for large quantities', () => {
       const result = calculator.calculate([{ width: 100, height: 100, quantity: 10000 }]);
 
       expect(result.totalAreaNeeded).toBeCloseTo(10000, 4);

@@ -1,41 +1,59 @@
+export interface PricedPiece {
+  width: number; // cm
+  height: number; // cm
+  quantity?: number; // omitted means 1
+}
+
 export interface BoardPricingInput {
-  boards: number; // whole boards billed
+  pieces: PricedPiece[];
   boardAreaM2: number;
   pricePerM2: number | null; // null on legacy rows priced per board only
   pricePerUnit: number; // € per board, used only when pricePerM2 is null
 }
 
 export interface BoardPricingResult {
-  /** Whole-board price snapshot, rounded to 2 decimals. */
+  /** € per m2: the product price, or pricePerUnit / boardArea on legacy rows. */
+  pricePerM2: number;
+  /** Informational price of one full board (boardArea x pricePerM2), rounded once. */
   pricePerBoard: number;
-  /** boards x boardArea x pricePerM2, rounded once to 2 decimals. */
+  /** Used area x pricePerM2, rounded once to 2 decimals. */
   totalPrice: number;
 }
 
 export const toCents = (euros: number): number => Math.round(euros * 100);
 
+const CM2_PER_M2 = 10000;
+const EPSILON = 1e-9;
+
+/** cents = round(area cm2 x cents per m2 / 10,000), half rounded up, float noise ignored. */
+const roundedCents = (areaCm2: number, centsPerM2: number): number =>
+  Math.floor((areaCm2 * centsPerM2) / CM2_PER_M2 + 0.5 + EPSILON);
+
 /**
- * Prices M2 products by whole boards at pricePerM2. Works in integer cents
- * and rounds only once at the end, so float drift cannot add or lose a cent.
+ * Prices an M2 group by the area actually used (not by whole boards). The
+ * area is summed in cm2 over all pieces and rounded to cents only once, so
+ * neither per-piece rounding nor float drift can add or lose a cent. The
+ * leftover of the last board is not charged.
+ *
+ * Legacy rows without pricePerM2 derive the m2 price as pricePerUnit / board
+ * area, so no code path bills by boards any more.
  */
-export function priceBoards(input: BoardPricingInput): BoardPricingResult {
-  const { boards, boardAreaM2, pricePerM2, pricePerUnit } = input;
+export function priceUsedArea(input: BoardPricingInput): BoardPricingResult {
+  const { pieces, boardAreaM2, pricePerM2, pricePerUnit } = input;
 
-  if (pricePerM2 === null) {
-    return {
-      pricePerBoard: pricePerUnit,
-      totalPrice: toCents(boards * pricePerUnit) / 100,
-    };
-  }
+  // Four decimals of cm2 absorb float noise without losing real precision.
+  const usedAreaCm2 =
+    Math.round(pieces.reduce((sum, p) => sum + p.width * p.height * (p.quantity ?? 1), 0) * 10000) /
+    10000;
+  const boardAreaCm2 = boardAreaM2 * CM2_PER_M2;
 
-  const boardAreaCm2 = boardAreaM2 * 10000;
-  const pricePerM2Cents = toCents(pricePerM2);
-  // cents = boards x areaCm2 x (cents per m2) / 10,000 cm2 per m2
-  const roundedCents = (units: number): number =>
-    Math.floor(Math.round(units * boardAreaCm2 * pricePerM2Cents) / 10000 + 0.5);
+  const centsPerM2 =
+    pricePerM2 !== null ? toCents(pricePerM2) : (toCents(pricePerUnit) * CM2_PER_M2) / boardAreaCm2;
 
   return {
-    pricePerBoard: roundedCents(1) / 100,
-    totalPrice: roundedCents(boards) / 100,
+    pricePerM2: pricePerM2 ?? toCents(centsPerM2 / 100) / 100,
+    pricePerBoard:
+      pricePerM2 !== null ? roundedCents(boardAreaCm2, centsPerM2) / 100 : pricePerUnit,
+    totalPrice: roundedCents(usedAreaCm2, centsPerM2) / 100,
   };
 }

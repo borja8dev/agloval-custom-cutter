@@ -7,7 +7,7 @@ import {
 import { CalculationRequestDTO } from '../dto/CalculationRequest';
 import { CalculationResponseDTO } from '../dto/CalculationResponse';
 import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
-import { priceBoards } from '../../domain/services/BoardPricing';
+import { priceUsedArea } from '../../domain/services/BoardPricing';
 import {
   ProductNotFoundException,
   CalculationNotFoundException,
@@ -45,8 +45,8 @@ export class CalculationApplicationService implements ICalculateUseCase {
     });
 
     const calculationResult = calculator.calculate(request.requestedPieces);
-    const { pricePerBoard, totalPrice } = priceBoards({
-      boards: calculationResult.boardsNeeded,
+    const { pricePerBoard, totalPrice } = priceUsedArea({
+      pieces: request.requestedPieces,
       boardAreaM2: (product.standardWidth * product.standardHeight) / 10000,
       pricePerM2: product.pricePerM2,
       pricePerUnit: product.pricePerUnit,
@@ -107,8 +107,8 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const calculationResult = calculator.calculate(requestedPieces);
     // A DRAFT update is a re-quote: price again from the product's current
     // prices, so create and update always apply the same formula.
-    const { pricePerBoard, totalPrice } = priceBoards({
-      boards: calculationResult.boardsNeeded,
+    const { pricePerBoard, totalPrice } = priceUsedArea({
+      pieces: requestedPieces,
       boardAreaM2: (existing.product.standardWidth * existing.product.standardHeight) / 10000,
       pricePerM2: existing.product.pricePerM2,
       pricePerUnit: existing.product.pricePerUnit,

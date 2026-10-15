@@ -42,8 +42,9 @@ const mixedResponse: OrderQuoteResponseDTO = {
       usedAreaM2: 16,
       boardAreaM2: 2.9768,
       boardsNeeded: 6,
+      pricePerM2: 15.5,
       pricePerBoard: 46.14,
-      price: 276.84,
+      price: 248,
     },
     {
       kind: 'UNIT',
@@ -61,7 +62,7 @@ const mixedResponse: OrderQuoteResponseDTO = {
       price: 36,
     },
   ],
-  total: 317.04,
+  total: 288.2,
   currency: 'EUR',
   calculatedAt: '2026-10-09T10:00:00.000Z',
 };

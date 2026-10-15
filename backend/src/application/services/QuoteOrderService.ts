@@ -8,7 +8,7 @@ import {
   OrderQuoteResponseDTO,
 } from '../dto/OrderQuote';
 import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
-import { priceBoards, toCents } from '../../domain/services/BoardPricing';
+import { priceUsedArea, toCents } from '../../domain/services/BoardPricing';
 import { linearLineCents, unitLineCents } from '../../domain/services/OrderPricing';
 import {
   IncompleteProductException,
@@ -88,8 +88,8 @@ export class QuoteOrderService implements IOrderQuoteUseCase {
       height: product.standardHeight,
     });
     const result = calculator.calculate(pieces);
-    const pricing = priceBoards({
-      boards: result.boardsNeeded,
+    const pricing = priceUsedArea({
+      pieces,
       boardAreaM2: result.boardArea,
       pricePerM2: product.pricePerM2,
       pricePerUnit: product.pricePerUnit,
@@ -106,6 +106,7 @@ export class QuoteOrderService implements IOrderQuoteUseCase {
         usedAreaM2: result.totalAreaNeeded,
         boardAreaM2: result.boardArea,
         boardsNeeded: result.boardsNeeded,
+        pricePerM2: pricing.pricePerM2,
         pricePerBoard: pricing.pricePerBoard,
         price: cents / 100,
       },
