@@ -17,13 +17,14 @@ const boardGroup: QuoteGroup = {
     boardHeight: 122,
     lengthCm: null
   },
-  pieces: [{ width: 100, height: 80, quantity: 20 }],
-  pieceCount: 20,
-  usedAreaM2: 1.6,
+  pieces: [{ width: 100, height: 80, quantity: 5 }],
+  pieceCount: 5,
+  usedAreaM2: 4,
   boardAreaM2: 2.9768,
-  boardsNeeded: 1,
+  boardsNeeded: 2,
+  pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 46.14
+  price: 62
 };
 
 const linearGroup: QuoteGroup = {
@@ -48,7 +49,7 @@ const linearGroup: QuoteGroup = {
 
 const quote: OrderQuote = makeQuote({
   groups: [boardGroup, ...makeQuote().groups, linearGroup],
-  total: 86.34
+  total: 102.2
 });
 
 describe('export service', () => {
@@ -56,13 +57,13 @@ describe('export service', () => {
     test('lists every group by product name with its price and the total', () => {
       const text = buildOrderText(quote);
       expect(text).toContain('Melamina Blanca 244x122');
-      expect(text).toContain('1 tablero');
-      expect(text).toContain('46,14 EUR');
+      expect(text).toContain('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
+      expect(text).toContain('Necesitas 2 tableros de 244 x 122 cm');
       expect(text).toContain('Tornillo');
       expect(text).toContain('12 x 0,35 EUR');
       expect(text).toContain('Perfil 2.4 m');
       expect(text).toContain('3 barras');
-      expect(text).toContain('Total: 86,34 EUR');
+      expect(text).toContain('Total: 102,20 EUR');
     });
 
     test('never mentions waste or utilisation', () => {
@@ -89,7 +90,7 @@ describe('export service', () => {
 
       const decoded = decodeURIComponent((url as string).split('text=')[1]);
       expect(decoded).toContain('Melamina Blanca 244x122');
-      expect(decoded).toContain('Total: 86,34 EUR');
+      expect(decoded).toContain('Total: 102,20 EUR');
 
       openSpy.mockRestore();
     });
@@ -115,7 +116,7 @@ describe('export service', () => {
 
       expect(params.get('subject')).toContain('Presupuesto');
       expect(body).toContain('Melamina Blanca 244x122');
-      expect(body).toContain('Total: 86,34 EUR');
+      expect(body).toContain('Total: 102,20 EUR');
     });
   });
 });

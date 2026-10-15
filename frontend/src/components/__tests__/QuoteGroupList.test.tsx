@@ -33,13 +33,14 @@ const boardGroup: QuoteBoardGroup = {
     boardWidth: 244,
     boardHeight: 122,
   }),
-  pieces: [{ width: 100, height: 80, quantity: 2 }],
-  pieceCount: 2,
-  usedAreaM2: 1.6,
+  pieces: [{ width: 100, height: 80, quantity: 5 }],
+  pieceCount: 5,
+  usedAreaM2: 4,
   boardAreaM2: 2.9768,
   boardsNeeded: 2,
+  pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 92.28,
+  price: 62,
 };
 
 const linearGroup: QuoteLinearGroup = {
@@ -57,22 +58,34 @@ describe('QuoteGroupList', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('renders a board group with area, boards, board type and prices', () => {
+  test('renders a board group as used area x price per m² = price', () => {
     render(<QuoteGroupList groups={[boardGroup]} />);
     const item = screen.getByTestId('quote-group');
-    expect(item).toHaveTextContent('1,60 m² usados');
-    expect(item).toHaveTextContent('2 tableros');
+    expect(item).toHaveTextContent('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
     expect(item).toHaveTextContent('Melamina Blanca');
     expect(item).toHaveTextContent('16 mm');
-    expect(item).toHaveTextContent('244 x 122 cm');
-    expect(item).toHaveTextContent('46,14 EUR');
-    expect(item).toHaveTextContent('92,28 EUR');
+    expect(item).not.toHaveTextContent('por tablero');
+  });
+
+  test('shows the board count as information with the board size', () => {
+    render(<QuoteGroupList groups={[boardGroup]} />);
+    expect(screen.getByTestId('quote-group')).toHaveTextContent(
+      'Necesitas 2 tableros de 244 x 122 cm'
+    );
   });
 
   test('uses the singular for one board', () => {
     render(<QuoteGroupList groups={[{ ...boardGroup, boardsNeeded: 1 }]} />);
-    expect(screen.getByTestId('quote-group')).toHaveTextContent('1 tablero');
+    expect(screen.getByTestId('quote-group')).toHaveTextContent('Necesitas 1 tablero de');
     expect(screen.queryByText(/1 tableros/)).toBeNull();
+  });
+
+  test('falls back to the per-board wording for stored entries without pricePerM2', () => {
+    const stored = { ...boardGroup, pricePerM2: undefined } as unknown as QuoteBoardGroup;
+    render(<QuoteGroupList groups={[stored]} />);
+    const item = screen.getByTestId('quote-group');
+    expect(item).toHaveTextContent('46,14 EUR por tablero = 62,00 EUR');
+    expect(item).toHaveTextContent('2 tableros');
   });
 
   test('renders a unit group as quantity x price = total', () => {
