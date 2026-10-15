@@ -28,6 +28,30 @@ Procedure:
 
 Integration tests delete products and categories, so they run on a separate `*_test` database and refuse any other (see `docs/TROUBLESHOOTING.md`).
 
+### Known data issues in the July 2026 tariff (to confirm with Agloval)
+
+The importer flags these rows in its report; they are loaded as they come in the CSV. Prices are not listed here on purpose.
+
+**Description and measures disagree** (`DIMENSIONS_MISMATCH`). The app uses the `medida1`/`medida2` columns, not the description, so the sold board size is the one in the columns:
+
+| SKU | Description | `medida1` x `medida2` |
+|---|---|---|
+| `07V300000000` | CONT.FENOLICO VARIAS 30mm 250x122 | 1,00 x 1,00 m |
+| `03GRGU38285S` | SUPERPAN GRIS GU SOF 38mm 285x210 | 2,44 x 1,22 m |
+
+**Same description, different SKU** (`DUPLICATE_DESCRIPTION`). Both rows are imported; they may be real duplicates or a typo in one description:
+
+| SKUs | Description |
+|---|---|
+| `280000014530`, `280000004530` | % TORNILLO SPAX 4,5 X 30 |
+| `280000014545`, `280000004545` | % TORNILLO SPAX 4,5 X 45 |
+| `12HV50CC0000`, `12HAV50CC000` | CHAPA HAYA VAPORIZADA 50mm CON COLA |
+| `400800015070`, `400800015080` | PUERTA 4 CANTOS GRUPO-8 150X70 |
+
+The last pair looks like a door of 150x70 and another of 150x80 whose description was not updated, judging by the SKU suffixes. That is an inference to confirm, not something the data proves.
+
+Once Agloval corrects the Excel, export it again and re-run the import: it is idempotent and updates the rows by SKU.
+
 ## Category → Agloval's category table
 
 If Agloval already has a categories table, map by `name` (`Category.name` is unique in this schema — assume the same is true, or make it so, on the real side).
