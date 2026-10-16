@@ -41,3 +41,7 @@ Pending (record inline/delegated and trigger evidence as each task starts).
 - Decision (user, superseded 2026-10-15): M2 was charged by whole boards. REPLACED by option C: M2 is charged by the m2 actually used (price = used area x pricePerM2); the number of boards stays informational. Reason: the board count is area-based with no real nesting, so billing whole boards from it was inaccurate anyway.
 - Review mode: user asked to disable it for this clone (clone-local off) after repeated consent prompts on the accumulated branch. Ordinary checks (tests, lint, build) still apply.
 - Not blocking T7: user is reviewing backend/data/families.json before `--apply` on the dev DB.
+
+## Decision update 2026-10-16 (user)
+Option C (bill the used m2) is replaced: boards are always bought whole, so a computed 3.7 boards is billed as 4. Price per board = boardArea x pricePerM2 rounded to cents; total = boards x price per board, so the unit price times the count equals the total shown. The board count remains the area-based estimate.
+- [ ] T7d bill whole boards again (round the count up): BoardPricing, quote and calculation services, quote group display, export text, API docs and the e2e price assertions (branch feat/bill-whole-boards)
