@@ -3,7 +3,12 @@ import {
   CalculationRequest,
   CalculationResponse,
   Product,
-  ApiResponse
+  ApiResponse,
+  Family,
+  OrderQuote,
+  ProductListParams,
+  ProductListResult,
+  QuoteRequest
 } from '../types';
 
 export function getErrorMessage(err: unknown, fallback: string): string {
@@ -40,6 +45,14 @@ apiClient.interceptors.response.use(
   }
 );
 
+const EMPTY_PRODUCT_PAGE: ProductListResult = { products: [], count: 0, total: 0 };
+
+function definedOnly<T extends object>(params: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 export async function getProducts(limit: number = 50): Promise<Product[]> {
   const response = await apiClient.get<ApiResponse<{ products: Product[] }>>(
     '/api/products',
@@ -53,8 +66,8 @@ export async function getProducts(limit: number = 50): Promise<Product[]> {
   return response.data.data.products;
 }
 
-export async function getProduct(productId: string): Promise<Product> {
-  const response = await apiClient.get<ApiResponse<Product>>(
+export async function getProduct<T = Product>(productId: string): Promise<T> {
+  const response = await apiClient.get<ApiResponse<T>>(
     `/api/products/${productId}`
   );
 
@@ -81,6 +94,70 @@ export async function searchProducts(query: string): Promise<Product[]> {
     console.error(`Error searching products for "${query}":`, error);
     return [];
   }
+}
+
+export async function getFamilies(): Promise<Family[]> {
+  const response = await apiClient.get<ApiResponse<{ families: Family[]; count: number }>>(
+    '/api/families'
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to fetch families');
+  }
+
+  return response.data.data.families;
+}
+
+export async function listProducts(
+  params: ProductListParams = {}
+): Promise<ProductListResult> {
+  const response = await apiClient.get<ApiResponse<ProductListResult>>('/api/products', {
+    params: definedOnly(params)
+  });
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to fetch products');
+  }
+
+  return response.data.data;
+}
+
+export async function searchCatalogProducts(
+  query: string,
+  params: ProductListParams = {}
+): Promise<ProductListResult> {
+  try {
+    const response = await apiClient.get<ApiResponse<ProductListResult>>(
+      '/api/products/search',
+      { params: { q: query, ...definedOnly(params) } }
+    );
+
+    if (!response.data.success || !response.data.data) {
+      return EMPTY_PRODUCT_PAGE;
+    }
+
+    return response.data.data;
+  } catch (error) {
+    console.error(`Error searching products for "${query}":`, error);
+    return EMPTY_PRODUCT_PAGE;
+  }
+}
+
+export async function quoteOrder(
+  request: QuoteRequest,
+  signal?: AbortSignal
+): Promise<OrderQuote> {
+  const response = await apiClient.post<ApiResponse<OrderQuote>>(
+    '/api/orders/quote',
+    request,
+    { signal }
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to quote order');
+  }
+
+  return response.data.data;
 }
 
 export async function createCalculation(
