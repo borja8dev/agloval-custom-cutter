@@ -1,6 +1,8 @@
 export interface Piece {
   width: number; // cm
   height: number; // cm
+  /** Identical copies of this piece (integer >= 1). Omitted means 1. */
+  quantity?: number;
 }
 
 export interface BoardDimensions {

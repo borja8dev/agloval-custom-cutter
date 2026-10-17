@@ -36,6 +36,7 @@ describe('ProductUseCaseAdapter', () => {
   beforeEach(() => {
     repo = {
       findById: jest.fn().mockResolvedValue(sampleProduct),
+      findByIds: jest.fn(),
       findAll: jest.fn().mockResolvedValue([sampleProduct]),
       findByCategory: jest.fn().mockResolvedValue([sampleProduct]),
       search: jest.fn().mockResolvedValue([sampleProduct]),

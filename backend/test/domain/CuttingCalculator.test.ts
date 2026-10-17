@@ -323,4 +323,38 @@ describe('CuttingCalculator', () => {
       expect(result1.totalAreaNeeded).toBe(result2.totalAreaNeeded);
     });
   });
+  describe('Piece quantities', () => {
+    test('counts the area of N identical pieces without expanding them', () => {
+      const result = calculator.calculate([{ width: 100, height: 100, quantity: 3 }]);
+
+      expect(result.totalAreaNeeded).toBeCloseTo(3, 4);
+      expect(result.pieceCount).toBe(3);
+      expect(result.averagePieceSize).toBeCloseTo(1, 4);
+      expect(result.boardsNeeded).toBe(1);
+    });
+
+    test('treats a missing quantity as 1 and mixes both forms', () => {
+      const result = calculator.calculate([
+        { width: 100, height: 100, quantity: 5 },
+        { width: 100, height: 100 },
+      ]);
+
+      expect(result.totalAreaNeeded).toBeCloseTo(6, 4);
+      expect(result.pieceCount).toBe(6);
+      expect(result.boardsNeeded).toBe(1);
+    });
+
+    test('bills whole boards for large quantities', () => {
+      const result = calculator.calculate([{ width: 100, height: 100, quantity: 10000 }]);
+
+      expect(result.totalAreaNeeded).toBeCloseTo(10000, 4);
+      expect(result.boardsNeeded).toBe(1667); // ceil(10000 / 6)
+    });
+
+    test.each([0, -1, 1.5])('rejects the invalid quantity %s', (quantity) => {
+      expect(() => calculator.calculate([{ width: 100, height: 100, quantity }])).toThrow(
+        InvalidPieceException
+      );
+    });
+  });
 });

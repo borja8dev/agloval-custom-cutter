@@ -30,6 +30,24 @@ export class MissingBoardDimensionsException extends DomainException {
   }
 }
 
+/** An order line does not fit its product's unit (pieces vs quantity). */
+export class InvalidOrderLineException extends DomainException {
+  constructor(productName: string, unit: string, problem: string) {
+    super(
+      `Invalid order line for "${productName}" (unit ${unit}): ${problem}`,
+      'INVALID_ORDER_LINE',
+      400
+    );
+  }
+}
+
+/** A catalog product lacks the data its unit needs (board size, bar length). */
+export class IncompleteProductException extends DomainException {
+  constructor(productId: string, missing: string) {
+    super(`Product ${productId} has no ${missing}`, 'INCOMPLETE_PRODUCT', 500);
+  }
+}
+
 export class CalculationNotFoundException extends DomainException {
   constructor(calculationId: string) {
     super(`Calculation not found: ${calculationId}`, 'CALCULATION_NOT_FOUND', 404);
