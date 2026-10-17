@@ -16,6 +16,20 @@ export class UnsupportedProductUnitException extends DomainException {
   }
 }
 
+/**
+ * A stored calculation points at a product without board dimensions. Calculations
+ * only exist for M2 products, so this is a data-integrity problem, not a client error.
+ */
+export class MissingBoardDimensionsException extends DomainException {
+  constructor(calculationId: string, productId: string) {
+    super(
+      `Calculation ${calculationId} references product ${productId} without board dimensions`,
+      'MISSING_BOARD_DIMENSIONS',
+      500
+    );
+  }
+}
+
 export class CalculationNotFoundException extends DomainException {
   constructor(calculationId: string) {
     super(`Calculation not found: ${calculationId}`, 'CALCULATION_NOT_FOUND', 404);

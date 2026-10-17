@@ -1,5 +1,10 @@
 import { IProductUseCase } from '../ports/in/ProductUseCase';
-import { IProductRepository, ProductRecord } from '../ports/out/CalculationPersistence';
+import {
+  FamilySummary,
+  IProductRepository,
+  ProductFilter,
+  ProductRecord,
+} from '../ports/out/CalculationPersistence';
 
 /**
  * Thin pass-through implementing IProductUseCase over IProductRepository.
@@ -11,15 +16,32 @@ import { IProductRepository, ProductRecord } from '../ports/out/CalculationPersi
 export class ProductUseCaseAdapter implements IProductUseCase {
   constructor(private productRepository: IProductRepository) {}
 
-  async getAll(limit?: number, skip?: number): Promise<ProductRecord[]> {
-    return this.productRepository.findAll(limit, skip);
+  async getAll(limit?: number, skip?: number, filter?: ProductFilter): Promise<ProductRecord[]> {
+    return this.productRepository.findAll(limit, skip, filter);
   }
 
   async getById(productId: string): Promise<ProductRecord | null> {
     return this.productRepository.findById(productId);
   }
 
-  async search(query: string, limit?: number, skip?: number): Promise<ProductRecord[]> {
-    return this.productRepository.search(query, limit, skip);
+  async search(
+    query: string,
+    limit?: number,
+    skip?: number,
+    filter?: ProductFilter
+  ): Promise<ProductRecord[]> {
+    return this.productRepository.search(query, limit, skip, filter);
+  }
+
+  async countAll(filter?: ProductFilter): Promise<number> {
+    return this.productRepository.count(filter);
+  }
+
+  async countSearch(query: string, filter?: ProductFilter): Promise<number> {
+    return this.productRepository.countSearch(query, filter);
+  }
+
+  async listFamilies(): Promise<FamilySummary[]> {
+    return this.productRepository.listFamilies();
   }
 }

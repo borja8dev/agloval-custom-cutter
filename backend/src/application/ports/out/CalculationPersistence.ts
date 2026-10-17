@@ -28,6 +28,21 @@ export interface ProductRecord {
   currency: string;
 }
 
+/** Optional narrowing for product listings and searches. */
+export interface ProductFilter {
+  /** Family code (Category.code). An unknown code simply matches nothing. */
+  familyCode?: string;
+  unit?: ProductUnit;
+}
+
+/** A product family with how many of its products are sold per unit. */
+export interface FamilySummary {
+  code: string;
+  name: string;
+  productCount: number;
+  units: Record<ProductUnit, number>;
+}
+
 export interface CalculationRecord {
   id: string;
   productId: string;
@@ -46,6 +61,8 @@ export interface CalculationRecord {
     standardWidth: number;
     standardHeight: number;
     thickness: number | null;
+    pricePerUnit: number; // € per board (legacy pricing)
+    pricePerM2: number | null; // € per m² (M2 products)
     category: {
       name: string;
     };
@@ -54,9 +71,20 @@ export interface CalculationRecord {
 
 export interface IProductRepository {
   findById(productId: string): Promise<ProductRecord | null>;
-  findAll(limit?: number, skip?: number): Promise<ProductRecord[]>;
+  findAll(limit?: number, skip?: number, filter?: ProductFilter): Promise<ProductRecord[]>;
   findByCategory(categoryId: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
-  search(query: string, limit?: number, skip?: number): Promise<ProductRecord[]>;
+  search(
+    query: string,
+    limit?: number,
+    skip?: number,
+    filter?: ProductFilter
+  ): Promise<ProductRecord[]>;
+  /** Number of products matching the filter (not just one page). */
+  count(filter?: ProductFilter): Promise<number>;
+  /** Number of products matching the search query and filter (not just one page). */
+  countSearch(query: string, filter?: ProductFilter): Promise<number>;
+  /** Every family sorted by code, with per-unit product counts. */
+  listFamilies(): Promise<FamilySummary[]>;
 }
 
 export interface ICalculationRepository {

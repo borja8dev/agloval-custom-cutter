@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { CalculationRecord } from '../../../application/ports/out/CalculationPersistence';
+import { MissingBoardDimensionsException } from '../../../application/exceptions/ApplicationException';
 
 type CalculationWithProduct = Prisma.CalculationGetPayload<{
   include: { product: { include: { category: true } } };
@@ -16,9 +17,7 @@ export class CalculationMapper {
   static toDomain(calculation: CalculationWithProduct): CalculationRecord {
     const { standardWidth, standardHeight } = calculation.product;
     if (standardWidth === null || standardHeight === null) {
-      throw new Error(
-        `Calculation ${calculation.id} references product ${calculation.product.id} without board dimensions`
-      );
+      throw new MissingBoardDimensionsException(calculation.id, calculation.product.id);
     }
     return {
       id: calculation.id,
@@ -41,6 +40,9 @@ export class CalculationMapper {
         standardWidth,
         standardHeight,
         thickness: calculation.product.thickness,
+        pricePerUnit: Number(calculation.product.pricePerUnit),
+        pricePerM2:
+          calculation.product.pricePerM2 === null ? null : Number(calculation.product.pricePerM2),
         category: {
           name: calculation.product.category.name,
         },

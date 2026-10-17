@@ -15,7 +15,7 @@ export interface CalculationResult {
 
   totalAreaNeeded: number; // m²
   boardArea: number; // m² (the standard board)
-  boardsNeeded: number; // 1.2 = 1 board + 20% of another
+  boardsNeeded: number; // whole boards billed (ceil of used area / board area)
   wastePercentage: number; // % of purchased area not used
 
   pieceCount: number;

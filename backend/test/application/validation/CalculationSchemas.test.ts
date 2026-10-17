@@ -1,3 +1,4 @@
+import { MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM } from '../../../src/domain/constants';
 import {
   CalculationRequestSchema,
   validateCalculationRequest,
@@ -112,5 +113,38 @@ describe('CalculationRequestSchema', () => {
     const result = validateCalculationRequest(validRequest);
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
+  });
+});
+
+describe('CalculationRequestSchema minimum piece size', () => {
+  const build = (width: number, height: number) => ({
+    productId: 'clv9t1a2k0001zzz9qqqqqqqq',
+    requestedPieces: [{ width, height }],
+  });
+
+  test('accepts the minimum piece (2cm wide x 15cm high)', () => {
+    expect(
+      CalculationRequestSchema.safeParse(build(MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM)).success
+    ).toBe(true);
+  });
+
+  test('rejects a width below the minimum with a message naming it', () => {
+    const result = CalculationRequestSchema.safeParse(build(1.99, 100));
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain(
+      `Width must be at least ${MIN_PIECE_WIDTH_CM} cm`
+    );
+  });
+
+  test('rejects a height below the minimum with a message naming it', () => {
+    const result = CalculationRequestSchema.safeParse(build(100, 14.99));
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain(
+      `Height must be at least ${MIN_PIECE_HEIGHT_CM} cm`
+    );
+  });
+
+  test('does not auto-rotate: 15cm wide x 2cm high is rejected', () => {
+    expect(CalculationRequestSchema.safeParse(build(15, 2)).success).toBe(false);
   });
 });

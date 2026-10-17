@@ -1,7 +1,7 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import { createCalculationRoutes } from '../web/routes/calculations.routes';
-import { createProductRoutes } from '../web/routes/products.routes';
+import { createFamilyRoutes, createProductRoutes } from '../web/routes/products.routes';
 import { CalculationController } from '../web/controllers/CalculationController';
 import { ProductController } from '../web/controllers/ProductController';
 import { requestLogger, responseTime } from '../web/middleware/logging';
@@ -37,6 +37,7 @@ export function createExpressApp(
 
   app.use('/api/calculations', createCalculationRoutes(calculationController));
   app.use('/api/products', createProductRoutes(productController));
+  app.use('/api/families', createFamilyRoutes(productController));
 
   app.use((req, res) => {
     res.status(404).json({

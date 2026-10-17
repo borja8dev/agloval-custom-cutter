@@ -1,5 +1,6 @@
 import { ProductUseCaseAdapter } from '../../../src/application/services/ProductUseCaseAdapter';
 import {
+  FamilySummary,
   IProductRepository,
   ProductRecord,
 } from '../../../src/application/ports/out/CalculationPersistence';
@@ -22,6 +23,13 @@ describe('ProductUseCaseAdapter', () => {
     currency: 'EUR',
   };
 
+  const sampleFamily: FamilySummary = {
+    code: 'TEST',
+    name: 'Test Category',
+    productCount: 3,
+    units: { UD: 1, M2: 1, ML: 1 },
+  };
+
   let repo: IProductRepository;
   let adapter: ProductUseCaseAdapter;
 
@@ -31,13 +39,16 @@ describe('ProductUseCaseAdapter', () => {
       findAll: jest.fn().mockResolvedValue([sampleProduct]),
       findByCategory: jest.fn().mockResolvedValue([sampleProduct]),
       search: jest.fn().mockResolvedValue([sampleProduct]),
+      count: jest.fn().mockResolvedValue(42),
+      countSearch: jest.fn().mockResolvedValue(7),
+      listFamilies: jest.fn().mockResolvedValue([sampleFamily]),
     };
     adapter = new ProductUseCaseAdapter(repo);
   });
 
   test('getAll() delegates to repository.findAll()', async () => {
     const result = await adapter.getAll(10);
-    expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
+    expect(repo.findAll).toHaveBeenCalledWith(10, undefined, undefined);
     expect(result).toEqual([sampleProduct]);
   });
 
@@ -49,7 +60,28 @@ describe('ProductUseCaseAdapter', () => {
 
   test('search() delegates to repository.search()', async () => {
     const result = await adapter.search('melamina');
-    expect(repo.search).toHaveBeenCalledWith('melamina', undefined, undefined);
+    expect(repo.search).toHaveBeenCalledWith('melamina', undefined, undefined, undefined);
     expect(result).toEqual([sampleProduct]);
+  });
+
+  test('getAll() forwards the family and unit filter', async () => {
+    await adapter.getAll(10, 5, { familyCode: 'TEST', unit: 'UD' });
+    expect(repo.findAll).toHaveBeenCalledWith(10, 5, { familyCode: 'TEST', unit: 'UD' });
+  });
+
+  test('search() forwards the filter', async () => {
+    await adapter.search('melamina', 10, 0, { unit: 'M2' });
+    expect(repo.search).toHaveBeenCalledWith('melamina', 10, 0, { unit: 'M2' });
+  });
+
+  test('countAll() and countSearch() delegate with the filter', async () => {
+    expect(await adapter.countAll({ familyCode: 'TEST' })).toBe(42);
+    expect(repo.count).toHaveBeenCalledWith({ familyCode: 'TEST' });
+    expect(await adapter.countSearch('mel', { unit: 'UD' })).toBe(7);
+    expect(repo.countSearch).toHaveBeenCalledWith('mel', { unit: 'UD' });
+  });
+
+  test('listFamilies() delegates to repository.listFamilies()', async () => {
+    expect(await adapter.listFamilies()).toEqual([sampleFamily]);
   });
 });

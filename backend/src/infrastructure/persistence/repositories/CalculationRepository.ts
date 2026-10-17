@@ -67,6 +67,7 @@ export class CalculationRepository implements ICalculationRepository {
           ...(data.requestedPieces !== undefined && { requestedPieces: data.requestedPieces }),
           ...(data.totalAreaNeeded !== undefined && { totalAreaNeeded: data.totalAreaNeeded }),
           ...(data.boardsUsed !== undefined && { boardsUsed: data.boardsUsed }),
+          ...(data.pricePerBoard !== undefined && { pricePerBoard: data.pricePerBoard }),
           ...(data.totalPrice !== undefined && { totalPrice: data.totalPrice }),
         },
         include: withProduct,

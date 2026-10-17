@@ -1,9 +1,21 @@
 import { z } from 'zod';
+import { MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM } from '../../domain/constants';
 
-/** Single { width, height } piece, in cm. */
+/**
+ * Single { width, height } piece, in cm. The minimum applies to each dimension
+ * as entered; pieces are never auto-rotated.
+ */
 export const PieceSchema = z.object({
-  width: z.number().positive('Width must be positive').finite('Width must be finite'),
-  height: z.number().positive('Height must be positive').finite('Height must be finite'),
+  width: z
+    .number()
+    .positive('Width must be positive')
+    .finite('Width must be finite')
+    .min(MIN_PIECE_WIDTH_CM, `Width must be at least ${MIN_PIECE_WIDTH_CM} cm`),
+  height: z
+    .number()
+    .positive('Height must be positive')
+    .finite('Height must be finite')
+    .min(MIN_PIECE_HEIGHT_CM, `Height must be at least ${MIN_PIECE_HEIGHT_CM} cm`),
 });
 
 /**

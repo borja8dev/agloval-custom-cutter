@@ -21,7 +21,8 @@ feature-branch-chain (chosen by user). Integration branch: `claude/frontend-bd-m
 - [x] T4 parseCatalogCsv (pure, TDD) (route: delegated writer; RED: suite failed on missing module; GREEN: 13 suites / 175 tests, tsc and lint clean; real CSV parses 2690 rows, 0 skipped, UD 2001 / M2 607 / ML 82, 62 families; warnings: 33 percent prefix, 7 dot prefix, 8 duplicate-description rows, 2 dimension mismatches)
 - [x] T5 import-catalog CLI: dry-run/apply, report, pg_dump guard, families.json (route: delegated writer; RED: 5 suites failed on missing modules; GREEN: 18 suites / 202 tests, tsc and lint clean; real dry-run: 2690 rows, 0 skipped, 62 families all named; --apply without --backup-file refused before any DB client; NOT applied to any DB. families.json is a draft pending user correction)
 - [ ] T6 docs: MIGRATION_GUIDE + ERD; validate counts (2001/607/82, 62 families) after user OK
-- [ ] T7 backend: family/unit filters, /api/families, QuoteOrder, per-unit validation, min piece 2x15
+- [x] T7a backend catalog API: GET /api/families, family/unit filters on products, product DTO with sku/unit/family, min piece 2x15 cm, M2 billed by whole boards at pricePerM2, null-dimension hardening (branch feat/catalog-api-filters, commit 97dbb00; route: delegated writer; RED observed for the domain suites only, the other suites were written first but their RED was not observed; GREEN: 22 suites / 268 tests, tsc and lint clean. Native review: medium tier, 1285 lines; the reliability lens failed twice on the 32000 output token limit, so by the user's decision the review was abandoned and T7a ships verified by tests only)
+- [ ] T7b backend order quote: stateless POST /api/orders/quote with M2 groups, UD and ML lines, total
 - [ ] T8 frontend: FamilySelect/ProductList, unit-aware form, order summary, grouped history, remove AreaVisualizer/waste
 - [ ] T9 rewrite Cypress specs
 
@@ -33,4 +34,5 @@ Pending (record inline/delegated and trigger evidence as each task starts).
 - Second native review of the same slice plus the first correction (tier high, 40 files, 1849 lines): consent granted, 4 lenses, one CRITICAL finding (R4-001: a failed apply skipped the report, so partial writes left no record) fixed in 757cd70 (154 lines), validated, approved, acknowledged and authority burned. 15 advisory findings, all non-blocking.
 - Review boundary advances to 757cd70. Next review base is that commit.
 - Advisory follow-ups worth doing in T7: null-dimension handling in CalculationApplicationService (lines 32-38, 130-133, flagged by two lenses), DB name parsing in backup-db.sh, runImport.ts size and structure.
-- Blocked: user must review backend/data/families.json before `--apply` on the dev DB.
+- Decision (user): M2 is charged by whole boards: boards = ceil(used area / board area), price = boards x board area x pricePerM2.
+- Not blocking T7: user is reviewing backend/data/families.json before `--apply` on the dev DB.
