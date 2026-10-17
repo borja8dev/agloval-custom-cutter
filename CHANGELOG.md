@@ -17,6 +17,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.1.0] - 2026-10-17
+
+Real Agloval catalog and the order quote API. The sample catalog is replaced by the real July 2026 tariff (2,690 articles in 62 families, sold as units, boards cut to size and bars), and the backend gains the endpoints the new order screen needs. The screen itself ships in v1.2.0.
+
+### Added
+- Product schema for the real catalog: `Category.code` (the tariff family code, kept as text), `Product.sku`, `Product.unit` (`UD`, `M2` or `ML`) and `Product.length_cm` for bars. Board dimensions and thickness become nullable because units and bars have none.
+- Tariff import: a pure CSV parser and an idempotent import (`npm run catalog:import`) that upserts families by code and products by SKU. It is a dry run by default, writes a JSON report with no prices, and `--apply` requires a recent `pg_dump` (`npm run db:backup`).
+- `backend/data/families.json`: display names for the 62 family codes, deduced from the article descriptions and meant to be corrected by the owner.
+- `GET /api/families` with product counts per unit, and `family` and `unit` filters on `GET /api/products` and `GET /api/products/search`. List responses keep `count` (page size) and add `total` (all matches).
+- `POST /api/orders/quote`: a stateless quote for an order made of board lines (pieces with a quantity), unit lines and bar lines, with products loaded in a single query.
+- A quantity per piece in the cutting calculator, so 20 identical cuts are one piece.
+- Skip pagination and deterministic ordering in the repositories.
+- Isolated test database: backend tests refuse any database whose name does not end in `_test` (`DATABASE_URL_TEST`, `npm run db:test:setup`).
+- Documentation: the catalog import procedure, known data issues in the tariff, an updated ERD, curl examples in the API reference.
+
+### Changed
+- Board pricing: boards are billed whole at the price per m2. The number of boards is an integer, no longer rounded to tenths.
+- A piece must be at least 2 cm wide and 15 cm high (it was a fixed 10 cm), and no larger than the board.
+- Updating a draft calculation re-quotes it at the current prices; creating one still records the quoted price.
+- Database columns and tables use snake_case names through Prisma `@map` and `@@map`.
+- Product responses carry `sku`, `unit`, `familyCode`, `familyName`, `pricePerM2` and `lengthCm`; `thickness` is returned as `null` instead of `0` when absent.
+- Calculations only exist for `M2` products; other units are rejected with `UNSUPPORTED_PRODUCT_UNIT`.
+
+### Fixed
+- Updating and deleting a calculation now run inside a transaction.
+- The import's backup guard rejects a truncated `pg_dump`, and the import always writes its report, even when a batch fails after others were committed.
+- A calculation whose product has no board dimensions raises a typed error instead of returning zeros.
+
+### Upgrade notes
+- Take a `pg_dump` first. The migration `20260804095353_add_column_table_mapping` drops and recreates the tables, so it does not preserve rows. The new migration `20260807090000_add_catalog_fields` is `ALTER` only.
+- Apply the migrations (`npx prisma migrate deploy`), then load the catalog: `npm run catalog:import` for a dry run, then `npm run catalog:import -- --apply --backup-file <dump>`.
+- Backend tests need `DATABASE_URL_TEST` pointing at a `*_test` database.
+- Known tariff data issues to confirm with Agloval are listed in `docs/MIGRATION_GUIDE.md`.
+
 ## [1.0.0] - 2026-08-04
 
 Phase D — Documentation + deployment config, complete. MVP feature-complete: the root README's own Roadmap had declared v1.0 as "current target" with 5 criteria (calculation engine, API, DB persistence, testing, React UI) — all satisfied as of this release. Live deployment and auth remain future work (see `v1.1+` in the README Roadmap).
