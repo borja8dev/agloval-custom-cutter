@@ -23,23 +23,6 @@ const BoardDetails: React.FC<{ group: QuoteBoardGroup }> = ({ group }) => {
     .filter(Boolean)
     .join(' · ');
 
-  // Entries stored before billing by used area carry no pricePerM2: keep the old wording.
-  if (group.pricePerM2 === undefined) {
-    return (
-      <>
-        <p className="text-gray-600">
-          {formatDecimal(group.usedAreaM2)} m² usados ·{' '}
-          <span className="font-medium">{boardCount(group)}</span>
-        </p>
-        <p className="text-gray-600">{boardType}</p>
-        <p className="text-gray-600">
-          {money(group.pricePerBoard)} por tablero ={' '}
-          <span className="font-semibold text-gray-900">{money(group.price)}</span>
-        </p>
-      </>
-    );
-  }
-
   const boardSize =
     product.boardWidth !== null && product.boardHeight !== null
       ? ` de ${product.boardWidth} x ${product.boardHeight} cm`
@@ -49,12 +32,12 @@ const BoardDetails: React.FC<{ group: QuoteBoardGroup }> = ({ group }) => {
     <>
       <p className="text-gray-600">{boardType}</p>
       <p className="text-gray-600">
-        {formatDecimal(group.usedAreaM2)} m² x {formatDecimal(group.pricePerM2)} EUR/m² ={' '}
-        <span className="font-semibold text-gray-900">{money(group.price)}</span>
-      </p>
-      <p className="text-xs text-gray-500">
-        Necesitas {boardCount(group)}
+        {formatDecimal(group.usedAreaM2)} m² usados · {boardCount(group)}
         {boardSize}
+      </p>
+      <p className="text-gray-600">
+        {boardCount(group)} x {money(group.pricePerBoard)} ={' '}
+        <span className="font-semibold text-gray-900">{money(group.price)}</span>
       </p>
     </>
   );

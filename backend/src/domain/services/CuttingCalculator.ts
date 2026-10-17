@@ -1,5 +1,6 @@
 import { Piece, BoardDimensions, CalculationResult } from '../types';
 import { MIN_PIECE_WIDTH_CM, MIN_PIECE_HEIGHT_CM } from '../constants';
+import { boardsForArea } from './BoardPricing';
 import {
   InvalidPieceException,
   EmptyPiecesListException,
@@ -129,13 +130,9 @@ export class CuttingCalculator {
     return pieces.reduce((sum, piece) => sum + (piece.quantity ?? 1), 0);
   }
 
-  /**
-   * Boards to buy, informational (the price follows the used area): 1.0 → 1, 1.05 → 2.
-   * The epsilon keeps float noise (e.g. 1.0000000000000002) from adding a board.
-   */
+  /** Boards to buy (rounded up, minimum 1); shared with the pricing so both agree. */
   private calculateBoardsNeeded(totalAreaNeeded: number): number {
-    const boardsExact = totalAreaNeeded / this.boardArea;
-    return Math.max(1, Math.ceil(boardsExact - 1e-9));
+    return boardsForArea(totalAreaNeeded, this.boardArea);
   }
 
   /**

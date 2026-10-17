@@ -1,4 +1,4 @@
-import { areaPriceCents, formatCents, groupPriceCents, parseCents } from '../support/money'
+import { formatCents, groupPriceCents, parseCents, wholeBoardsPrice } from '../support/money'
 
 const SUPERPAN = 'SUPERPAN WHITE SR209 SM 10mm 285x210'
 const SCREW = 'TORNILLO SPAX 3,5 X 20'
@@ -10,13 +10,37 @@ const totalText = (cents: number) => `Total: ${formatCents(cents)} EUR`
 const listedPriceCents = (name: string) =>
   cy
     .contains('[data-testid="product-item"]', name)
-    .find('.font-mono')
+    .find('[data-testid="product-price"]')
     .invoke('text')
     .then((text) => {
       const match = text.match(/(\d+,\d{2}) EUR\/(?:m2|ud|m)/)
       if (!match) throw new Error(`No price in row "${text}"`)
       return parseCents(match[1])
     })
+
+// Board size shown in the product row ("285 x 210 cm · 10 mm"), in cm.
+const listedBoardSize = (name: string) =>
+  cy
+    .contains('[data-testid="product-item"]', name)
+    .find('[data-testid="product-measure"]')
+    .invoke('text')
+    .then((text) => {
+      const match = text.match(/(\d+) x (\d+) cm/)
+      if (!match) throw new Error(`No board size in "${text}"`)
+      return { width: Number(match[1]), height: Number(match[2]) }
+    })
+
+// Whole-board billing for a used area in cm2 on the listed board of a product.
+const wholeBoardsFor = (name: string, usedAreaCm2: number) =>
+  listedBoardSize(name).then((board) =>
+    listedPriceCents(name).then((pricePerM2) => ({
+      pricePerM2,
+      board,
+      ...wholeBoardsPrice(usedAreaCm2, board.width, board.height, pricePerM2),
+    }))
+  )
+
+const boardsText = (boards: number) => `${boards} ${boards === 1 ? 'tablero' : 'tableros'}`
 
 const sumOfGroupPrices = ($groups: JQuery<HTMLElement>) =>
   [...$groups].reduce((sum, group) => sum + groupPriceCents(group.textContent ?? ''), 0)
@@ -33,20 +57,21 @@ describe('Cutting calculator', () => {
     cy.contains('button', 'Vaciar pedido').should('be.disabled')
   })
 
-  it('bills 20 pieces of 100 x 80 by the used area times the price per m2', () => {
+  it('bills 20 pieces of 100 x 80 by the whole boards that must be bought', () => {
     cy.pickProduct(SUPERPAN)
-    listedPriceCents(SUPERPAN).then((pricePerM2) => {
+    // 16 m2 of pieces (160000 cm2) on 285 x 210 boards: the count rounds up.
+    wholeBoardsFor(SUPERPAN, 100 * 80 * 20).then(({ board, boards, pricePerBoardCents, totalCents }) => {
       cy.addBoardPiece(100, 80, 20)
 
       cy.get('[data-testid="quote-group"]')
         .should('have.length', 1)
-        .and('contain', '16,00 m²')
-        .and('contain', `${formatCents(pricePerM2)} EUR/m²`)
-        .and('contain', 'Necesitas')
-      cy.get('[data-testid="order-total"]').should(
-        'have.text',
-        totalText(areaPriceCents(16, pricePerM2))
-      )
+        .and('contain', '16,00 m² usados')
+        .and('contain', `${boardsText(boards)} de ${board.width} x ${board.height} cm`)
+        .and(
+          'contain',
+          `${boardsText(boards)} x ${formatCents(pricePerBoardCents)} EUR = ${formatCents(totalCents)} EUR`
+        )
+      cy.get('[data-testid="order-total"]').should('have.text', totalText(totalCents))
     })
     cy.get('[data-testid="order-line"]').should('contain', '100 x 80 cm')
     cy.get('input[aria-label="Cantidad de piezas 100 x 80 cm"]').should('have.value', '20')
@@ -127,22 +152,17 @@ describe('Cutting calculator', () => {
 
   it('updates the total when a quantity is edited inline', () => {
     cy.pickProduct(SUPERPAN)
-    listedPriceCents(SUPERPAN).then((pricePerM2) => {
+    wholeBoardsFor(SUPERPAN, 100 * 80 * 20).then((full) => {
       cy.addBoardPiece(100, 80, 20)
-      cy.get('[data-testid="order-total"]').should(
-        'have.text',
-        totalText(areaPriceCents(16, pricePerM2))
-      )
+      cy.get('[data-testid="order-total"]').should('have.text', totalText(full.totalCents))
 
       cy.get('input[aria-label="Cantidad de piezas 100 x 80 cm"]').clear()
       cy.get('input[aria-label="Cantidad de piezas 100 x 80 cm"]').type('10{enter}')
       cy.wait('@quote')
 
-      cy.get('[data-testid="quote-group"]').should('contain', '8,00 m²')
-      cy.get('[data-testid="order-total"]').should(
-        'have.text',
-        totalText(areaPriceCents(8, pricePerM2))
-      )
+      cy.get('[data-testid="quote-group"]').should('contain', '8,00 m² usados')
+      const half = wholeBoardsPrice(100 * 80 * 10, full.board.width, full.board.height, full.pricePerM2)
+      cy.get('[data-testid="order-total"]').should('have.text', totalText(half.totalCents))
     })
   })
 

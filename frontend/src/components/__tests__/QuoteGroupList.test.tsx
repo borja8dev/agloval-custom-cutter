@@ -40,7 +40,7 @@ const boardGroup: QuoteBoardGroup = {
   boardsNeeded: 2,
   pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 62,
+  price: 92.28,
 };
 
 const linearGroup: QuoteLinearGroup = {
@@ -58,34 +58,27 @@ describe('QuoteGroupList', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test('renders a board group as used area x price per m² = price', () => {
+  test('renders a board group as boards x price per board = price', () => {
     render(<QuoteGroupList groups={[boardGroup]} />);
     const item = screen.getByTestId('quote-group');
-    expect(item).toHaveTextContent('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
+    expect(item).toHaveTextContent('2 tableros x 46,14 EUR = 92,28 EUR');
     expect(item).toHaveTextContent('Melamina Blanca');
     expect(item).toHaveTextContent('16 mm');
-    expect(item).not.toHaveTextContent('por tablero');
   });
 
-  test('shows the board count as information with the board size', () => {
+  test('shows the used area with the whole boards and their size', () => {
     render(<QuoteGroupList groups={[boardGroup]} />);
     expect(screen.getByTestId('quote-group')).toHaveTextContent(
-      'Necesitas 2 tableros de 244 x 122 cm'
+      '4,00 m² usados · 2 tableros de 244 x 122 cm'
     );
   });
 
   test('uses the singular for one board', () => {
     render(<QuoteGroupList groups={[{ ...boardGroup, boardsNeeded: 1 }]} />);
-    expect(screen.getByTestId('quote-group')).toHaveTextContent('Necesitas 1 tablero de');
-    expect(screen.queryByText(/1 tableros/)).toBeNull();
-  });
-
-  test('falls back to the per-board wording for stored entries without pricePerM2', () => {
-    const stored = { ...boardGroup, pricePerM2: undefined } as unknown as QuoteBoardGroup;
-    render(<QuoteGroupList groups={[stored]} />);
     const item = screen.getByTestId('quote-group');
-    expect(item).toHaveTextContent('46,14 EUR por tablero = 62,00 EUR');
-    expect(item).toHaveTextContent('2 tableros');
+    expect(item).toHaveTextContent('1 tablero de 244 x 122 cm');
+    expect(item).toHaveTextContent('1 tablero x 46,14 EUR');
+    expect(item).not.toHaveTextContent(/1 tableros/);
   });
 
   test('renders a unit group as quantity x price = total', () => {

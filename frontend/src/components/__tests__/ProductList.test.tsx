@@ -47,6 +47,14 @@ describe('ProductList', () => {
     expect(ml).toHaveTextContent('5,00 EUR/m');
   });
 
+  test('exposes the measure and the price of each row on their own elements', () => {
+    setup();
+    const [m2, ud] = screen.getAllByTestId('product-item');
+    expect(within(m2).getByTestId('product-measure')).toHaveTextContent('244 x 122 cm · 16 mm');
+    expect(within(m2).getByTestId('product-price')).toHaveTextContent('15,50 EUR/m2');
+    expect(within(ud).getByTestId('product-price')).toHaveTextContent('0,35 EUR/ud');
+  });
+
   test('falls back to price per board when pricePerM2 is null', () => {
     setup({ products: [makeProduct({ pricePerM2: null, pricePerUnit: 46.14 })] });
     expect(screen.getByTestId('product-item')).toHaveTextContent('46,14 EUR/tablero');

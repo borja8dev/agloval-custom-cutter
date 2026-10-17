@@ -1,96 +1,105 @@
-import { priceUsedArea } from '../../src/domain/services/BoardPricing';
+import { boardsForArea, priceWholeBoards } from '../../src/domain/services/BoardPricing';
 
 // 1 m2 = 10,000 cm2. A 100 x 100 piece is exactly 1 m2.
 const square = (quantity = 1) => ({ width: 100, height: 100, quantity });
+const base = { boardAreaM2: 10, pricePerM2: 10, pricePerUnit: 0 };
 
-describe('priceUsedArea', () => {
-  test('bills the used area at pricePerM2, not whole boards', () => {
-    // 3 m2 used on a 6 m2 board at 10 EUR/m2 -> 30 EUR (half a board is not billed as a board)
-    const result = priceUsedArea({
-      pieces: [square(3)],
-      boardAreaM2: 6,
+describe('boardsForArea', () => {
+  test('rounds up, with a minimum of one board', () => {
+    expect(boardsForArea(37, 10)).toBe(4);
+    expect(boardsForArea(10, 10)).toBe(1);
+    expect(boardsForArea(0.0001, 10)).toBe(1);
+  });
+
+  test('ignores float noise beyond the epsilon', () => {
+    expect(boardsForArea(10.000000000000002, 10)).toBe(1);
+    expect(boardsForArea(10.01, 10)).toBe(2);
+  });
+});
+
+describe('priceWholeBoards', () => {
+  test('bills 4 boards when the area needs 3.7', () => {
+    const result = priceWholeBoards({ ...base, pieces: [square(37)] });
+    expect(result.boardsNeeded).toBe(4);
+    expect(result.pricePerBoard).toBe(100);
+    expect(result.totalPrice).toBe(400);
+  });
+
+  test('bills the same for 3.1 and 3.9 boards of area', () => {
+    const low = priceWholeBoards({ ...base, pieces: [square(31)] });
+    const high = priceWholeBoards({ ...base, pieces: [square(39)] });
+    expect(low.boardsNeeded).toBe(4);
+    expect(high.boardsNeeded).toBe(4);
+    expect(low.totalPrice).toBe(high.totalPrice);
+  });
+
+  test('bills exactly one board for exactly 1.0 boards of area', () => {
+    const result = priceWholeBoards({ ...base, pieces: [square(10)] });
+    expect(result.boardsNeeded).toBe(1);
+    expect(result.totalPrice).toBe(100);
+  });
+
+  test('does not add a board for float noise on an exact multiple', () => {
+    // 0.1 m2 pieces x 30 = 3 m2 exactly on a 1 m2 board
+    const result = priceWholeBoards({
+      pieces: [{ width: 10, height: 100, quantity: 30 }],
+      boardAreaM2: 1,
       pricePerM2: 10,
-      pricePerUnit: 999,
-    });
-    expect(result.totalPrice).toBe(30);
-    expect(result.pricePerM2).toBe(10);
-    expect(result.pricePerBoard).toBe(60);
-  });
-
-  test('prices an exact area with awkward decimals', () => {
-    // 16.00 m2 x 14.36 = 229.76
-    const result = priceUsedArea({
-      pieces: [{ width: 400, height: 100, quantity: 4 }],
-      boardAreaM2: 5.985,
-      pricePerM2: 14.36,
       pricePerUnit: 0,
     });
-    expect(result.totalPrice).toBe(229.76);
+    expect(result.boardsNeeded).toBe(3);
   });
 
-  test('rounds once at the end, not per piece', () => {
-    // each piece: 33.33 x 33.33 cm = 0.11108889 m2 x 12.34 = 1.3709 EUR (1.37 rounded per piece)
-    // 10 pieces: 13.7085... -> 13.71, while 10 x 1.37 would be 13.70
-    const result = priceUsedArea({
-      pieces: [{ width: 33.33, height: 33.33, quantity: 10 }],
-      boardAreaM2: 6,
-      pricePerM2: 12.34,
-      pricePerUnit: 0,
+  test('adds a board when the area is beyond the epsilon', () => {
+    // 10.0001 m2 on a 10 m2 board
+    const result = priceWholeBoards({
+      ...base,
+      pieces: [{ width: 100.001, height: 1000, quantity: 1 }],
     });
-    expect(result.totalPrice).toBe(13.71);
+    expect(result.boardsNeeded).toBe(2);
   });
 
-  test('avoids floating point drift on exact cents', () => {
-    // 3 m2 x 1.15 = 3.45 exactly
-    const result = priceUsedArea({
-      pieces: [square(3)],
-      boardAreaM2: 6,
-      pricePerM2: 1.15,
-      pricePerUnit: 0,
-    });
-    expect(result.totalPrice).toBe(3.45);
+  test('bills one board for a tiny area (minimum)', () => {
+    const result = priceWholeBoards({ ...base, pieces: [{ width: 1, height: 1 }] });
+    expect(result.boardsNeeded).toBe(1);
+    expect(result.totalPrice).toBe(100);
   });
 
-  test('rounds the whole-board informational price once to 2 decimals', () => {
-    // 3.66 m2 x 12.34 = 45.1644 -> 45.16
-    const result = priceUsedArea({
-      pieces: [square()],
+  test('rounds the board price to cents first, then multiplies', () => {
+    // 3.66 m2 x 12.34 = 45.1644 -> 45.16 per board; 2 boards -> 90.32 (not 90.33)
+    const result = priceWholeBoards({
+      pieces: [square(5)],
       boardAreaM2: 3.66,
       pricePerM2: 12.34,
       pricePerUnit: 0,
     });
+    expect(result.boardsNeeded).toBe(2);
     expect(result.pricePerBoard).toBe(45.16);
+    expect(result.totalPrice).toBe(90.32);
+    expect(Math.round(result.pricePerBoard * 100) * result.boardsNeeded).toBe(
+      Math.round(result.totalPrice * 100)
+    );
   });
 
   test('treats a missing quantity as 1', () => {
-    const result = priceUsedArea({
+    const result = priceWholeBoards({
+      ...base,
       pieces: [{ width: 100, height: 100 }],
-      boardAreaM2: 6,
-      pricePerM2: 10,
-      pricePerUnit: 0,
     });
-    expect(result.totalPrice).toBe(10);
+    expect(result.totalPrice).toBe(100);
   });
 
-  test('derives the m2 price from pricePerUnit / board area when pricePerM2 is null (legacy rows)', () => {
-    // 95.50 EUR per 6 m2 board -> 15.9166.. EUR/m2; 3 m2 used -> 47.75
-    const result = priceUsedArea({
-      pieces: [square(3)],
+  test('uses pricePerUnit as the board price when pricePerM2 is null (legacy rows)', () => {
+    // 95.50 EUR per 6 m2 board -> 15.92 EUR/m2 shown; 7 m2 needs 2 boards
+    const result = priceWholeBoards({
+      pieces: [square(7)],
       boardAreaM2: 6,
       pricePerM2: null,
       pricePerUnit: 95.5,
     });
-    expect(result.totalPrice).toBe(47.75);
+    expect(result.boardsNeeded).toBe(2);
     expect(result.pricePerM2).toBe(15.92);
     expect(result.pricePerBoard).toBe(95.5);
-  });
-
-  test('the price does not depend on how many boards the area needs', () => {
-    // 5.9 m2 fits one 6 m2 board, 6.1 m2 needs two: price is linear in the area either way
-    const input = { boardAreaM2: 6, pricePerM2: 10, pricePerUnit: 0 };
-    const one = priceUsedArea({ ...input, pieces: [{ width: 590, height: 100 }] });
-    const two = priceUsedArea({ ...input, pieces: [{ width: 610, height: 100 }] });
-    expect(one.totalPrice).toBe(59);
-    expect(two.totalPrice).toBe(61);
+    expect(result.totalPrice).toBe(191);
   });
 });
