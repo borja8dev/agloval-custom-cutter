@@ -7,11 +7,7 @@ function describeBoardGroup(group: QuoteBoardGroup, currency: string): string {
   const boards = `${group.boardsNeeded} ${group.boardsNeeded === 1 ? 'tablero' : 'tableros'}`;
   const { boardWidth, boardHeight } = group.product;
   const size = boardWidth !== null && boardHeight !== null ? ` de ${boardWidth} x ${boardHeight} cm` : '';
-  // Stored entries from before billing by used area have no pricePerM2.
-  const calculation =
-    group.pricePerM2 === undefined
-      ? `${boards} = ${money(group.price, currency)}`
-      : `${formatDecimal(group.usedAreaM2)} m² x ${formatDecimal(group.pricePerM2)} ${currency}/m² = ${money(group.price, currency)}\n  Necesitas ${boards}${size}`;
+  const calculation = `${formatDecimal(group.usedAreaM2)} m² usados · ${boards}${size}\n  ${boards} x ${money(group.pricePerBoard, currency)} = ${money(group.price, currency)}`;
   return `${group.product.name}: ${calculation}`;
 }
 

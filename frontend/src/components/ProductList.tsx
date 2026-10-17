@@ -88,8 +88,8 @@ export const ProductList: React.FC<ProductListProps> = ({
                 </div>
                 <p className="text-xs text-gray-500">{product.sku}</p>
                 <div className="flex flex-wrap items-center justify-between gap-x-3 text-sm text-gray-700">
-                  <span>{measure}</span>
-                  <span className="font-mono font-semibold text-green-700">
+                  <span data-testid="product-measure">{measure}</span>
+                  <span data-testid="product-price" className="font-mono font-semibold text-green-700">
                     {formatProductPrice(product)}
                   </span>
                 </div>

@@ -26,12 +26,12 @@ const boardGroup: QuoteGroup = {
   boardsNeeded: 2,
   pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 62,
+  price: 92.28,
 };
 
 const fullQuote: OrderQuote = makeQuote({
   groups: [boardGroup, ...makeQuote().groups],
-  total: 66.2,
+  total: 96.48,
 });
 
 function setup(props: Partial<React.ComponentProps<typeof OrderSummary>> = {}) {
@@ -81,14 +81,14 @@ describe('OrderSummary', () => {
     setup();
     const [m2, ud] = screen.getAllByTestId('order-line');
     expect(within(m2).getAllByTestId('quote-group')).toHaveLength(1);
-    expect(m2).toHaveTextContent('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
-    expect(m2).toHaveTextContent('Necesitas 2 tableros de 244 x 122 cm');
+    expect(m2).toHaveTextContent('4,00 m² usados · 2 tableros de 244 x 122 cm');
+    expect(m2).toHaveTextContent('2 tableros x 46,14 EUR = 92,28 EUR');
     expect(ud).toHaveTextContent('12 x 0,35 EUR = 4,20 EUR');
   });
 
   test('shows the total with two decimals and comma', () => {
     setup();
-    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 66,20 EUR');
+    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
   });
 
   test('keeps the total bar outside the scrolling lines container', () => {
@@ -182,8 +182,8 @@ describe('OrderSummary', () => {
     setup({ isLoading: true });
     expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeDisabled();
     expect(screen.getByText('Calculando...')).toBeInTheDocument();
-    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 66,20 EUR');
-    expect(screen.getAllByTestId('order-line')[0]).toHaveTextContent('62,00 EUR');
+    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
+    expect(screen.getAllByTestId('order-line')[0]).toHaveTextContent('92,28 EUR');
   });
 
   test('announces the calculating status through an aria-live region', () => {

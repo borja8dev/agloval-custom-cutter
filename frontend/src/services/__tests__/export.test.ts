@@ -24,7 +24,7 @@ const boardGroup: QuoteGroup = {
   boardsNeeded: 2,
   pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 62
+  price: 92.28
 };
 
 const linearGroup: QuoteGroup = {
@@ -49,7 +49,7 @@ const linearGroup: QuoteGroup = {
 
 const quote: OrderQuote = makeQuote({
   groups: [boardGroup, ...makeQuote().groups, linearGroup],
-  total: 102.2
+  total: 132.48
 });
 
 describe('export service', () => {
@@ -57,13 +57,13 @@ describe('export service', () => {
     test('lists every group by product name with its price and the total', () => {
       const text = buildOrderText(quote);
       expect(text).toContain('Melamina Blanca 244x122');
-      expect(text).toContain('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
-      expect(text).toContain('Necesitas 2 tableros de 244 x 122 cm');
+      expect(text).toContain('4,00 m² usados · 2 tableros de 244 x 122 cm');
+      expect(text).toContain('2 tableros x 46,14 EUR = 92,28 EUR');
       expect(text).toContain('Tornillo');
       expect(text).toContain('12 x 0,35 EUR');
       expect(text).toContain('Perfil 2.4 m');
       expect(text).toContain('3 barras');
-      expect(text).toContain('Total: 102,20 EUR');
+      expect(text).toContain('Total: 132,48 EUR');
     });
 
     test('never mentions waste or utilisation', () => {
@@ -90,7 +90,7 @@ describe('export service', () => {
 
       const decoded = decodeURIComponent((url as string).split('text=')[1]);
       expect(decoded).toContain('Melamina Blanca 244x122');
-      expect(decoded).toContain('Total: 102,20 EUR');
+      expect(decoded).toContain('Total: 132,48 EUR');
 
       openSpy.mockRestore();
     });
@@ -116,7 +116,7 @@ describe('export service', () => {
 
       expect(params.get('subject')).toContain('Presupuesto');
       expect(body).toContain('Melamina Blanca 244x122');
-      expect(body).toContain('Total: 102,20 EUR');
+      expect(body).toContain('Total: 132,48 EUR');
     });
   });
 });
