@@ -8,11 +8,17 @@ describe('ProductUseCaseAdapter', () => {
   const sampleProduct: ProductRecord = {
     id: 'prod_1',
     name: 'Test',
+    sku: 'SKU-1',
+    unit: 'M2',
+    familyCode: 'TEST',
+    familyName: 'Test Category',
     categoryName: 'Test Category',
     standardWidth: 300,
     standardHeight: 200,
     thickness: 18,
+    lengthCm: null,
     pricePerUnit: 100,
+    pricePerM2: null,
     currency: 'EUR',
   };
 

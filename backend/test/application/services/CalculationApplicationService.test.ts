@@ -9,6 +9,7 @@ import {
   ProductNotFoundException,
   CalculationNotFoundException,
   InvalidCalculationStatusException,
+  UnsupportedProductUnitException,
 } from '../../../src/application/exceptions/ApplicationException';
 
 describe('CalculationApplicationService', () => {
@@ -21,11 +22,17 @@ describe('CalculationApplicationService', () => {
       findById: jest.fn().mockResolvedValue({
         id: 'prod_1',
         name: 'Melamina Blanca 300x200',
+        sku: 'MEL-300',
+        unit: 'M2',
+        familyCode: 'MEL',
+        familyName: 'Melamina',
         categoryName: 'Melamina',
         standardWidth: 300,
         standardHeight: 200,
         thickness: 18,
+        lengthCm: null,
         pricePerUnit: 100,
+        pricePerM2: null,
         currency: 'EUR',
       }),
       findAll: jest.fn(),
@@ -112,6 +119,30 @@ describe('CalculationApplicationService', () => {
       };
 
       await expect(serviceNotFound.calculate(request)).rejects.toThrow(ProductNotFoundException);
+    });
+
+    test('should reject a non-M2 product', async () => {
+      (mockProductRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'prod_ud',
+        name: 'Tornillo',
+        sku: 'UD-1',
+        unit: 'UD',
+        familyCode: 'TOR',
+        familyName: 'Tornilleria',
+        categoryName: 'Tornilleria',
+        standardWidth: null,
+        standardHeight: null,
+        thickness: null,
+        lengthCm: null,
+        pricePerUnit: 1,
+        pricePerM2: null,
+        currency: 'EUR',
+      });
+
+      await expect(
+        service.calculate({ productId: 'prod_ud', requestedPieces: [{ width: 10, height: 10 }] })
+      ).rejects.toThrow(UnsupportedProductUnitException);
+      expect(mockCalculationRepo.save).not.toHaveBeenCalled();
     });
 
     test('should calculate waste percentage correctly', async () => {

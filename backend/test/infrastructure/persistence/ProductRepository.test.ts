@@ -17,12 +17,13 @@ describe('ProductRepository - Integration', () => {
   });
 
   beforeEach(async () => {
-    const category = await prisma.category.create({ data: { name: 'Test Category' } });
+    const category = await prisma.category.create({ data: { name: 'Test Category', code: 'TESTCAT' } });
     categoryId = category.id;
 
     await prisma.product.create({
       data: {
         id: 'prod_test_1',
+        sku: 'SKU-TEST-1',
         name: 'Test Product',
         categoryId: category.id,
         standardWidth: 300,
@@ -63,6 +64,50 @@ describe('ProductRepository - Integration', () => {
     });
   });
 
+  describe('non-board products', () => {
+    test('persists and reads back a UD product with null dimensions', async () => {
+      await prisma.product.create({
+        data: {
+          id: 'prod_ud_1',
+          sku: 'UD-0001',
+          name: 'Tornillo',
+          categoryId,
+          unit: 'UD',
+          pricePerUnit: 0.35,
+          currency: 'EUR',
+        },
+      });
+
+      const product = await repo.findById('prod_ud_1');
+
+      expect(product).toMatchObject({
+        sku: 'UD-0001',
+        unit: 'UD',
+        familyCode: 'TESTCAT',
+        familyName: 'Test Category',
+        standardWidth: null,
+        standardHeight: null,
+        thickness: null,
+        lengthCm: null,
+        pricePerM2: null,
+        pricePerUnit: 0.35,
+      });
+    });
+
+    test('rejects a duplicated sku', async () => {
+      await expect(
+        prisma.product.create({
+          data: {
+            sku: 'SKU-TEST-1',
+            name: 'Duplicate',
+            categoryId,
+            pricePerUnit: 1,
+          },
+        })
+      ).rejects.toThrow();
+    });
+  });
+
   describe('findAll()', () => {
     test('should return all products', async () => {
       const products = await repo.findAll();
@@ -75,6 +120,7 @@ describe('ProductRepository - Integration', () => {
       for (let i = 0; i < 5; i++) {
         await prisma.product.create({
           data: {
+            sku: `SKU-LOOP-${i}`,
             name: `Product ${i}`,
             categoryId,
             standardWidth: 300,

@@ -20,5 +20,7 @@ export default {
     '/node_modules/',
     '/dist/',
   ],
+  // Runs before any test module loads, so Prisma only ever sees a *_test URL.
+  setupFiles: ['<rootDir>/test/env.ts'],
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
 }

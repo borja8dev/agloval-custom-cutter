@@ -10,6 +10,7 @@ import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
 import {
   ProductNotFoundException,
   CalculationNotFoundException,
+  UnsupportedProductUnitException,
 } from '../exceptions/ApplicationException';
 
 /**
@@ -28,10 +29,18 @@ export class CalculationApplicationService implements ICalculateUseCase {
       throw new ProductNotFoundException(request.productId);
     }
 
+    if (
+      product.unit !== 'M2' ||
+      product.standardWidth === null ||
+      product.standardHeight === null
+    ) {
+      throw new UnsupportedProductUnitException(product.id, product.unit);
+    }
+
     const calculator = new CuttingCalculator({
       width: product.standardWidth,
       height: product.standardHeight,
-      thickness: product.thickness,
+      thickness: product.thickness ?? undefined,
     });
 
     const calculationResult = calculator.calculate(request.requestedPieces);
@@ -86,7 +95,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const calculator = new CuttingCalculator({
       width: existing.product.standardWidth,
       height: existing.product.standardHeight,
-      thickness: existing.product.thickness,
+      thickness: existing.product.thickness ?? undefined,
     });
 
     const calculationResult = calculator.calculate(requestedPieces);
@@ -121,7 +130,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
       board: {
         width: entity.product.standardWidth,
         height: entity.product.standardHeight,
-        thickness: entity.product.thickness,
+        thickness: entity.product.thickness ?? 0,
         area: boardArea,
       },
       requestedPieces: entity.requestedPieces,

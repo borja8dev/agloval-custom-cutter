@@ -50,7 +50,16 @@ npx prisma migrate dev    # if you also need a new migration
 
 ### Backend integration tests fail / hang
 
-Backend tests include `supertest` HTTP integration tests and repository tests against a **real Postgres instance** (not mocked) — they need `docker-compose up -d` running first, with migrations applied. If tests hang instead of failing fast, it's usually Postgres not being reachable at `DATABASE_URL`.
+Backend tests include `supertest` HTTP integration tests and repository tests against a **real Postgres instance** (not mocked) — they need `docker-compose up -d` running first, with migrations applied.
+
+The repository tests call `deleteMany` on products and categories, so they run against a dedicated database and refuse any database whose name does not end in `_test` (`backend/test/helpers/resolveTestDatabaseUrl.ts`). Set it once and create it with:
+
+```bash
+export DATABASE_URL_TEST="postgresql://agloval_user:agloval_password@localhost:5432/agloval_cutting_test"
+cd backend && npm run db:test:setup
+```
+
+In CI, `DATABASE_URL` already points at `agloval_cutting_test`, so no extra variable is needed. If tests hang instead of failing fast, it's usually Postgres not being reachable at `DATABASE_URL`.
 
 ---
 

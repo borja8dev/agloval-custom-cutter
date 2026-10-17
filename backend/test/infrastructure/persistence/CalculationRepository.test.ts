@@ -19,9 +19,10 @@ describe('CalculationRepository - Integration', () => {
     await prisma.product.deleteMany({});
     await prisma.category.deleteMany({});
 
-    const category = await prisma.category.create({ data: { name: 'Test' } });
+    const category = await prisma.category.create({ data: { name: 'Test', code: 'TEST' } });
     const product = await prisma.product.create({
       data: {
+        sku: 'SKU-CALC-1',
         name: 'Test Product',
         categoryId: category.id,
         standardWidth: 300,

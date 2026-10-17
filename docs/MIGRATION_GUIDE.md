@@ -4,6 +4,30 @@ This project's schema and DTOs were designed anticipating a future migration fro
 
 **Core principle:** the mapping boundary is the persistence layer (`infrastructure/persistence/mappers/`), not the application or domain layers. If Agloval's real schema has different table/column names, that gets absorbed in the mappers — `CalculationApplicationService`, `CuttingCalculator`, and the DTOs should not need to change.
 
+## Real catalog import (tariff CSV)
+
+The real catalog arrives as a CSV export of Agloval's tariff (July 2026), not as a database to connect to. It is loaded with `backend/scripts/import-catalog.ts`; the ETL skeleton further down is kept only as a reference for a future database-to-database migration.
+
+| CSV column | Stored as |
+|---|---|
+| `fam` | `Category.code` (text, leading zeros kept). Display name from `backend/data/families.json` |
+| `art` | `Product.sku` (unique, upsert key). `art2` always equals `art` and is ignored |
+| `des` | `Product.name` (leading `%` and `.` stripped); original text kept in `description` |
+| `pvp1` | `M2`: `pricePerM2`, with `pricePerUnit` derived as the whole-board price. `UD`: `pricePerUnit`. `ML`: `pricePerUnit` per metre |
+| `unimed` | `Product.unit`: `UD` (indivisible units), `M2` (boards cut to size), `ML` (bars sold whole, price per metre times length) |
+| `medida1`, `medida2` | `M2`: board width and height in cm (metres x 100). `ML`: `lengthCm` from `medida1`. `UD`: ignored, the tariff fills them with placeholders |
+
+Source file facts that the parser enforces: the first six lines are junk and the real header is `fam;art;des;pvp1;unimed;medida1;medida2;art2;`; separator `;`, decimal comma, UTF-8.
+
+Procedure:
+1. Keep the CSV in `data/source/` (gitignored: it contains Agloval's real prices). Reports go to `data/reports/` and dumps to `data/backups/`, both ignored too.
+2. Dry-run (default, never connects to the database): `cd backend && npm run catalog:import`. Read the report for skipped rows and warnings.
+3. Back up first: `npm run db:backup` (see the rollback procedures below).
+4. Apply: `npm run catalog:import -- --apply --backup-file <dump>`. The importer refuses to run without a dump made in the last 24 hours. It is idempotent (upsert by `code` and `sku`), so re-running after a partial failure or after correcting `families.json` is safe.
+5. Validate: counts by unit and family against the CSV, and a sample of prices.
+
+Integration tests delete products and categories, so they run on a separate `*_test` database and refuse any other (see `docs/TROUBLESHOOTING.md`).
+
 ## Category → Agloval's category table
 
 If Agloval already has a categories table, map by `name` (`Category.name` is unique in this schema — assume the same is true, or make it so, on the real side).
@@ -51,6 +75,8 @@ If Agloval already has a categories table, map by `name` (`Category.name` is uni
 4. Nothing in `application/` or `domain/` should need to change. If it does, that's a signal the port boundary wasn't respected somewhere — see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## ETL script skeleton
+
+> Reference only. The real catalog is loaded from the tariff CSV (see above); this skeleton applies if Agloval later exposes a database to read from.
 
 If Agloval's real database isn't migrated in place (i.e. this schema doesn't just get pointed at it via `DATABASE_URL`), a one-off ETL script moves existing rows across. This is a skeleton, not a ready-to-run script — it assumes a second Prisma client (or raw `pg` client) connected to the real source database alongside the one connected to this project's schema.
 
