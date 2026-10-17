@@ -30,7 +30,7 @@ export interface CalculationResponseDTO {
   /** Output of CuttingCalculator. */
   calculation: {
     totalAreaNeeded: number; // m²
-    boardsNeeded: number; // whole boards billed
+    boardsNeeded: number; // informational: boards to buy, not what is billed
     wastePercentage: number; // %
     pieceCount: number;
     averagePieceSize: number; // m²
@@ -39,12 +39,12 @@ export interface CalculationResponseDTO {
   /**
    * MIGRATION: pricePerBoard is captured at calculation time so a
    * calculation can be audited later (what was the price 3 months ago?).
-   * It is the whole-board price (board area × pricePerM2, 2 decimals).
+   * It is the informational whole-board price (board area × pricePerM2, 2 decimals).
    */
   pricing: {
     pricePerBoard: number; // €
     boardsNeeded: number; // same as calculation.boardsNeeded
-    totalPrice: number; // € = boardsNeeded × board area × pricePerM2, rounded once
+    totalPrice: number; // € = used area × pricePerM2, rounded once
     currency: string; // "EUR"
   };
 

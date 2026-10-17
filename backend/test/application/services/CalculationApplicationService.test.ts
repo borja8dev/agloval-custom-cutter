@@ -100,9 +100,9 @@ describe('CalculationApplicationService', () => {
       expect(response).toBeDefined();
       expect(response.id).toBeDefined();
       expect(response.product.name).toBe('Melamina Blanca 300x200');
-      expect(response.calculation.boardsNeeded).toBe(2); // 7 m2 / 6 m2 -> 2 whole boards
+      expect(response.calculation.boardsNeeded).toBe(2); // 7 m2 / 6 m2 -> 2 boards (informational)
       expect(response.pricing.pricePerBoard).toBe(60); // 6 m2 x 10 EUR/m2
-      expect(response.pricing.totalPrice).toBe(120); // 2 boards x 60
+      expect(response.pricing.totalPrice).toBe(70); // 7 m2 used x 10 EUR/m2
       expect(response.pricing.currency).toBe('EUR');
       expect(response.metadata.status).toBe('DRAFT');
     });
@@ -132,7 +132,7 @@ describe('CalculationApplicationService', () => {
       await expect(serviceNotFound.calculate(request)).rejects.toThrow(ProductNotFoundException);
     });
 
-    test('should bill whole boards at pricePerM2 and snapshot the whole-board price', async () => {
+    test('should bill the used area at pricePerM2 and snapshot the whole-board price', async () => {
       (mockProductRepo.findById as jest.Mock).mockResolvedValue({
         ...(await mockProductRepo.findById('prod_1')),
         pricePerUnit: 999,
@@ -147,9 +147,9 @@ describe('CalculationApplicationService', () => {
         ], // slightly above one board -> 2 boards
       });
 
-      // 6 m2 x 12.34 = 74.04 per board; 2 boards = 148.08
+      // 6 m2 x 12.34 = 74.04 per board; used 6.06 m2 x 12.34 = 74.7804 -> 74.78
       expect(mockCalculationRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ boardsUsed: 2, pricePerBoard: 74.04, totalPrice: 148.08 })
+        expect.objectContaining({ boardsUsed: 2, pricePerBoard: 74.04, totalPrice: 74.78 })
       );
     });
 
@@ -166,7 +166,8 @@ describe('CalculationApplicationService', () => {
       });
 
       expect(response.pricing.pricePerBoard).toBe(100);
-      expect(response.pricing.totalPrice).toBe(100);
+      // 1 m2 used of a 6 m2 board priced 100 EUR per board -> 100 / 6 per m2
+      expect(response.pricing.totalPrice).toBe(16.67);
     });
 
     test('should reject a non-M2 product', async () => {
@@ -374,7 +375,7 @@ describe('CalculationApplicationService', () => {
       const newPieces = [
         { width: 200, height: 100 },
         { width: 200, height: 100 },
-      ]; // 4 m² on a 6 m² board -> 1 whole board
+      ]; // 4 m² on a 6 m² board -> 1 board, billed 4 m² x 10 EUR/m²
 
       const response = await service.updateCalculation('calc_1', newPieces);
 
@@ -384,14 +385,14 @@ describe('CalculationApplicationService', () => {
           requestedPieces: newPieces,
           totalAreaNeeded: 4,
           boardsUsed: 1,
-          pricePerBoard: 60, // 6 m2 x 10 EUR/m2
-          totalPrice: 60,
+          pricePerBoard: 60, // informational: 6 m2 x 10 EUR/m2
+          totalPrice: 40,
         })
       );
       expect(response.requestedPieces).toEqual(newPieces);
     });
 
-    test('should re-quote a multi-board update with a single final rounding', async () => {
+    test('should re-quote a multi-board update on the used area with a single final rounding', async () => {
       (mockCalculationRepo.findById as jest.Mock).mockResolvedValue({
         ...existingEntity,
         product: { ...existingEntity.product, pricePerM2: 12.34 },
@@ -404,15 +405,15 @@ describe('CalculationApplicationService', () => {
         { width: 300, height: 200 },
         { width: 300, height: 200 },
         { width: 30, height: 20 },
-      ]); // 3 boards of 6 m2
+      ]); // 12.06 m2 -> 3 boards of 6 m2
 
       expect(mockCalculationRepo.update).toHaveBeenCalledWith(
         'calc_1',
-        expect.objectContaining({ boardsUsed: 3, pricePerBoard: 74.04, totalPrice: 222.12 })
+        expect.objectContaining({ boardsUsed: 3, pricePerBoard: 74.04, totalPrice: 148.82 })
       );
     });
 
-    test('should fall back to pricePerUnit on update when pricePerM2 is null', async () => {
+    test('should derive the m2 price from pricePerUnit on update when pricePerM2 is null', async () => {
       (mockCalculationRepo.findById as jest.Mock).mockResolvedValue({
         ...existingEntity,
         product: { ...existingEntity.product, pricePerM2: null, pricePerUnit: 80 },
@@ -425,7 +426,7 @@ describe('CalculationApplicationService', () => {
 
       expect(mockCalculationRepo.update).toHaveBeenCalledWith(
         'calc_1',
-        expect.objectContaining({ boardsUsed: 1, pricePerBoard: 80, totalPrice: 80 })
+        expect.objectContaining({ boardsUsed: 1, pricePerBoard: 80, totalPrice: 13.33 })
       );
     });
 

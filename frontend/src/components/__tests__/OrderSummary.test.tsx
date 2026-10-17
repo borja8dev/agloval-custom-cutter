@@ -19,18 +19,19 @@ const boardGroup: QuoteGroup = {
     boardHeight: 122,
     lengthCm: null,
   },
-  pieces: [{ width: 100, height: 80, quantity: 2 }],
-  pieceCount: 2,
-  usedAreaM2: 1.6,
+  pieces: [{ width: 100, height: 80, quantity: 5 }],
+  pieceCount: 5,
+  usedAreaM2: 4,
   boardAreaM2: 2.9768,
   boardsNeeded: 2,
+  pricePerM2: 15.5,
   pricePerBoard: 46.14,
-  price: 92.28,
+  price: 62,
 };
 
 const fullQuote: OrderQuote = makeQuote({
   groups: [boardGroup, ...makeQuote().groups],
-  total: 96.48,
+  total: 66.2,
 });
 
 function setup(props: Partial<React.ComponentProps<typeof OrderSummary>> = {}) {
@@ -80,15 +81,14 @@ describe('OrderSummary', () => {
     setup();
     const [m2, ud] = screen.getAllByTestId('order-line');
     expect(within(m2).getAllByTestId('quote-group')).toHaveLength(1);
-    expect(m2).toHaveTextContent('1,60 m² usados');
-    expect(m2).toHaveTextContent('2 tableros');
-    expect(m2).toHaveTextContent('92,28 EUR');
+    expect(m2).toHaveTextContent('4,00 m² x 15,50 EUR/m² = 62,00 EUR');
+    expect(m2).toHaveTextContent('Necesitas 2 tableros de 244 x 122 cm');
     expect(ud).toHaveTextContent('12 x 0,35 EUR = 4,20 EUR');
   });
 
   test('shows the total with two decimals and comma', () => {
     setup();
-    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
+    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 66,20 EUR');
   });
 
   test('keeps the total bar outside the scrolling lines container', () => {
@@ -182,8 +182,8 @@ describe('OrderSummary', () => {
     setup({ isLoading: true });
     expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeDisabled();
     expect(screen.getByText('Calculando...')).toBeInTheDocument();
-    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
-    expect(screen.getAllByTestId('order-line')[0]).toHaveTextContent('92,28 EUR');
+    expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 66,20 EUR');
+    expect(screen.getAllByTestId('order-line')[0]).toHaveTextContent('62,00 EUR');
   });
 
   test('announces the calculating status through an aria-live region', () => {

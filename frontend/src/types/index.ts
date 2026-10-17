@@ -98,8 +98,12 @@ export interface QuoteBoardGroup {
   pieceCount: number;
   usedAreaM2: number;
   boardAreaM2: number;
+  /** Informational: boards to buy for the used area. Not what is billed. */
   boardsNeeded: number;
+  pricePerM2: number;
+  /** Informational price of one full board. */
   pricePerBoard: number;
+  /** usedAreaM2 x pricePerM2. */
   price: number;
 }
 

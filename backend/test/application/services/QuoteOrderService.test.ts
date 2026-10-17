@@ -93,7 +93,7 @@ describe('QuoteOrderService', () => {
   };
 
   describe('board groups', () => {
-    test('prices pieces with quantities by whole boards', async () => {
+    test('prices pieces with quantities by the used area', async () => {
       const result = await service.quote({
         lines: [
           {
@@ -106,7 +106,7 @@ describe('QuoteOrderService', () => {
         ],
       });
 
-      // 20 x 0.2 m2 + 0.15 m2 = 4.15 m2 -> 5 boards of 1 m2 at 10 EUR/m2
+      // 20 x 0.2 m2 + 0.15 m2 = 4.15 m2 at 10 EUR/m2 = 41.50; 5 boards are only informational
       expect(group(result.groups, 0)).toEqual({
         kind: 'BOARD',
         product: {
@@ -129,15 +129,16 @@ describe('QuoteOrderService', () => {
         usedAreaM2: 4.15,
         boardAreaM2: 1,
         boardsNeeded: 5,
+        pricePerM2: 10,
         pricePerBoard: 10,
-        price: 50,
+        price: 41.5,
       });
-      expect(result.total).toBe(50);
+      expect(result.total).toBe(41.5);
       expect(result.currency).toBe('EUR');
       expect(new Date(result.calculatedAt).toISOString()).toBe(result.calculatedAt);
     });
 
-    test('exactly one board of area bills 1 board, just over bills 2', async () => {
+    test('exactly one board of area needs 1 board, just over needs 2, and the price follows the area', async () => {
       const exact = await service.quote({
         lines: [{ productId: 'board', pieces: [{ width: 100, height: 100, quantity: 1 }] }],
       });
@@ -154,7 +155,7 @@ describe('QuoteOrderService', () => {
           },
         ],
       });
-      expect(group(over.groups, 0)).toMatchObject({ boardsNeeded: 2, price: 20 });
+      expect(group(over.groups, 0)).toMatchObject({ boardsNeeded: 2, price: 10.03 }); // 1.003 m2, not 2 boards
     });
 
     test('supports a large piece quantity without expanding pieces', async () => {
@@ -184,6 +185,7 @@ describe('QuoteOrderService', () => {
         kind: 'BOARD',
         pieceCount: 2,
         boardsNeeded: 1,
+        price: 9,
         pieces: [
           { width: 60, height: 100, quantity: 1 },
           { width: 30, height: 100, quantity: 1 },
@@ -191,16 +193,81 @@ describe('QuoteOrderService', () => {
       });
     });
 
-    test('falls back to the legacy per-board price when pricePerM2 is null', async () => {
+    test('derives the m2 price from pricePerUnit / board area when pricePerM2 is null', async () => {
       repo.findByIds = jest.fn().mockResolvedValue([{ ...board, pricePerM2: null }]);
       const result = await service.quote({
         lines: [{ productId: 'board', pieces: [{ width: 100, height: 100, quantity: 2 }] }],
       });
       expect(group(result.groups, 0)).toMatchObject({
         boardsNeeded: 2,
+        pricePerM2: 99,
         pricePerBoard: 99,
         price: 198,
       });
+    });
+
+    test('legacy rows bill the used area too, not whole boards', async () => {
+      repo.findByIds = jest.fn().mockResolvedValue([{ ...board, pricePerM2: null }]);
+      const result = await service.quote({
+        lines: [
+          {
+            productId: 'board',
+            pieces: [
+              { width: 100, height: 100, quantity: 1 },
+              { width: 100, height: 50, quantity: 1 },
+            ],
+          },
+        ],
+      });
+      // 1.5 m2 of a 99 EUR/m2 legacy board = 148.50, on 2 boards
+      expect(group(result.groups, 0)).toMatchObject({ boardsNeeded: 2, price: 148.5 });
+    });
+
+    test('keeps the board count as ceil(used / board) with a minimum of 1', async () => {
+      const result = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 2, height: 15, quantity: 1 }] }],
+      });
+      expect(group(result.groups, 0)).toMatchObject({
+        usedAreaM2: 0.003,
+        boardsNeeded: 1,
+        price: 0.03,
+      });
+    });
+
+    test('the price is the same whether the area needs 1 or 2 boards', async () => {
+      // 1 m2 boards at 10 EUR/m2: 0.9 m2 fits 1 board, 1.1 m2 needs 2
+      const one = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 90, height: 100, quantity: 1 }] }],
+      });
+      const two = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 110 / 2, height: 100, quantity: 2 }] }],
+      });
+      expect(group(one.groups, 0)).toMatchObject({ boardsNeeded: 1, price: 9 });
+      expect(group(two.groups, 0)).toMatchObject({ boardsNeeded: 2, price: 11 });
+    });
+
+    test('prices an area with awkward decimals exactly and rounds once', async () => {
+      repo.findByIds = jest.fn().mockResolvedValue([{ ...board, pricePerM2: 14.36 }]);
+      const exact = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 80, height: 100, quantity: 20 }] }],
+      });
+      // 16.00 m2 x 14.36 = 229.76
+      expect(group(exact.groups, 0)).toMatchObject({ usedAreaM2: 16, price: 229.76 });
+
+      repo.findByIds = jest.fn().mockResolvedValue([{ ...board, pricePerM2: 12.34 }]);
+      const once = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 33.33, height: 33.33, quantity: 10 }] }],
+      });
+      // 1.1108889 m2 x 12.34 = 13.7084 (per piece it would round to 1.37 -> 13.70)
+      expect(group(once.groups, 0)).toMatchObject({ price: 13.71 });
+    });
+
+    test('exposes the informational whole-board price rounded once', async () => {
+      repo.findByIds = jest.fn().mockResolvedValue([{ ...board, pricePerM2: 14.36 }]);
+      const result = await service.quote({
+        lines: [{ productId: 'board', pieces: [{ width: 50, height: 50, quantity: 1 }] }],
+      });
+      expect(group(result.groups, 0)).toMatchObject({ pricePerM2: 14.36, pricePerBoard: 14.36 });
     });
 
     test('rejects a piece larger than the board with a 400', async () => {
@@ -277,6 +344,22 @@ describe('QuoteOrderService', () => {
         ],
       });
       expect(result.total).toBe(3.64);
+    });
+
+    test('two board groups total the sum of their cent prices', async () => {
+      repo.findByIds = jest.fn().mockResolvedValue([
+        { ...board, pricePerM2: 12.34 },
+        { ...otherBoard, pricePerM2: 12.34 },
+      ]);
+      const piece = [{ width: 33.33, height: 33.33, quantity: 1 }]; // 0.1108889 m2 -> 1.37
+      const result = await service.quote({
+        lines: [
+          { productId: 'board', pieces: piece },
+          { productId: 'board2', pieces: piece },
+        ],
+      });
+      expect(result.groups.map((g) => g.price)).toEqual([1.37, 1.37]);
+      expect(result.total).toBe(2.74);
     });
 
     test('loads all products with a single repository call', async () => {

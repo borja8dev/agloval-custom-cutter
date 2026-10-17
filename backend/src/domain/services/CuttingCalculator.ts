@@ -130,7 +130,7 @@ export class CuttingCalculator {
   }
 
   /**
-   * Whole boards (M2 products are sold by the board): 1.0 → 1, 1.05 → 2.
+   * Boards to buy, informational (the price follows the used area): 1.0 → 1, 1.05 → 2.
    * The epsilon keeps float noise (e.g. 1.0000000000000002) from adding a board.
    */
   private calculateBoardsNeeded(totalAreaNeeded: number): number {

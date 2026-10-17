@@ -1,13 +1,25 @@
-import type { OrderQuote, QuoteGroup } from '../types';
+import type { OrderQuote, QuoteBoardGroup, QuoteGroup } from '../types';
 import { formatDecimal } from '../utils/formatters';
 
 const money = (value: number, currency: string) => `${formatDecimal(value)} ${currency}`;
+
+function describeBoardGroup(group: QuoteBoardGroup, currency: string): string {
+  const boards = `${group.boardsNeeded} ${group.boardsNeeded === 1 ? 'tablero' : 'tableros'}`;
+  const { boardWidth, boardHeight } = group.product;
+  const size = boardWidth !== null && boardHeight !== null ? ` de ${boardWidth} x ${boardHeight} cm` : '';
+  // Stored entries from before billing by used area have no pricePerM2.
+  const calculation =
+    group.pricePerM2 === undefined
+      ? `${boards} = ${money(group.price, currency)}`
+      : `${formatDecimal(group.usedAreaM2)} m² x ${formatDecimal(group.pricePerM2)} ${currency}/m² = ${money(group.price, currency)}\n  Necesitas ${boards}${size}`;
+  return `${group.product.name}: ${calculation}`;
+}
 
 function describeGroup(group: QuoteGroup, currency: string): string {
   const name = group.product.name;
   switch (group.kind) {
     case 'BOARD':
-      return `${name}: ${group.boardsNeeded} ${group.boardsNeeded === 1 ? 'tablero' : 'tableros'} = ${money(group.price, currency)}`;
+      return describeBoardGroup(group, currency);
     case 'UNIT':
       return `${name}: ${group.quantity} x ${money(group.unitPrice, currency)} = ${money(group.price, currency)}`;
     case 'LINEAR':
