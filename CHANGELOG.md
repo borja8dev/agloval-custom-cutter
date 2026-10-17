@@ -17,6 +17,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.2.0] - 2026-10-17
+
+The new order flow. The calculator screen is rebuilt around families, three sales units and a multi-line order, on top of the catalog and the order quote API released in 1.1.0.
+
+### Added
+- Order screen in four full-width blocks: product selection, measures and quantity, current order, and history.
+  - A family dropdown and a searchable product list with its own scroll; each row shows its measure, its price with the right unit, and how many of that product are already in the order.
+  - A form per unit: boards take width, height and a quantity of identical pieces (checked against the 2 x 15 cm minimum and the board size); units and bars take a whole quantity, and bars show their fixed length.
+  - A current-order summary with its own scroll and a total that is always visible, inline editing of quantities, and a per-board summary (area used, boards to buy, board type and price).
+  - A numbered order history ("Pedido #N") with date, total and priced breakdown, reorder at today's prices (with a warning for products that no longer exist) and a two-step "clear history". Numbers are never reused after a deletion.
+- `pricePerM2` in the board groups of the order quote.
+- End-to-end tests rewritten for the new flow (39 Cypress tests against the real backend and catalog); the base URL is configurable with `CYPRESS_BASE_URL`, and the README explains how to run them on other ports.
+- `docs/BRANCHING_AND_RELEASES.md`: how branches, stacked pull requests, versions and releases work in this repository.
+- Known tariff data issues to confirm with Agloval, in `docs/MIGRATION_GUIDE.md`.
+
+### Changed
+- Board billing: the price of one board is rounded to cents first and the total is boards times that price, so the unit price shown multiplied by the count equals the total to the cent. A total can differ by one cent from 1.1.0, which rounded once at the end.
+- A board group reads "16,00 m2 usados · 3 tableros de 285 x 210 cm" and "3 tableros x 85,94 EUR = 257,82 EUR"; the exported text uses the same wording.
+- The product search runs on the server from two characters and combines with the family filter.
+- The board count is computed in one place shared by the cutting calculator and the pricing.
+
+### Removed
+- The waste and utilisation percentage and the area visualizer.
+- The three-column calculator and its components (product card, measurement form, pieces list, price display, cart preview, calculation history) and the old calculation hooks and API client functions.
+- The shareable link to a calculation: quotes are stateless now, so "Copy link" became "Copy summary" and the WhatsApp and email options send the same plain-text summary. The PDF option still shows its "planned" message.
+
+### Upgrade notes
+- No database migration and no new environment variable for the application; only the optional `CYPRESS_BASE_URL` is new, for the end-to-end tests.
+- The order history is stored in the browser under a new key (`agloval_order_history_v2`). Entries saved by earlier versions under `agloval_calculation_history` are neither read nor deleted, so they stop being shown.
+- An intermediate billing rule that charged only the area used was replaced before this release; it never shipped in a tag.
+- The board count is still an area-based estimate that does not nest pieces on boards, so it can under-count.
+
 ## [1.1.0] - 2026-10-17
 
 Real Agloval catalog and the order quote API. The sample catalog is replaced by the real July 2026 tariff (2,690 articles in 62 families, sold as units, boards cut to size and bars), and the backend gains the endpoints the new order screen needs. The screen itself ships in v1.2.0.
