@@ -178,6 +178,7 @@ agloval-custom-cutter/
 | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Vercel (frontend) + Render (backend) deployment runbook |
 | [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Common local-dev issues and fixes |
 | [docs/ERD.md](./docs/ERD.md) | Database schema diagram (Category, Product, Calculation, User) |
+| [docs/BRANCHING_AND_RELEASES.md](./docs/BRANCHING_AND_RELEASES.md) | Branches, pull requests, stacked PRs, versioning and how a release is made |
 
 ---
 
