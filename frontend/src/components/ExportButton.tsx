@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CalculationResponse } from '../types';
-import { exportToPDF, generateShareUrl } from '../services/export';
+import { OrderQuote } from '../types';
+import { buildOrderText, exportToPDF } from '../services/export';
 import { ShareModal } from './ShareModal';
 
 interface ExportButtonProps {
-  calculation: CalculationResponse | null;
+  quote: OrderQuote | null;
 }
 
-export const ExportButton: React.FC<ExportButtonProps> = ({ calculation }) => {
+export const ExportButton: React.FC<ExportButtonProps> = ({ quote }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [pdfMessage, setPdfMessage] = useState<string | null>(null);
@@ -23,13 +23,13 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ calculation }) => {
     };
   }, []);
 
-  if (!calculation) {
+  if (!quote) {
     return null;
   }
 
   const handleExportPDF = async () => {
     try {
-      await exportToPDF(calculation);
+      await exportToPDF(quote);
     } catch (err) {
       setPdfMessage(
         err instanceof Error ? err.message : 'Exportación a PDF no disponible todavía'
@@ -43,10 +43,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ calculation }) => {
     setShowMenu(false);
   };
 
-  const handleCopyLink = async () => {
-    const url = generateShareUrl(calculation.id);
+  const handleCopySummary = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(buildOrderText(quote));
       setCopyFeedback('copied');
     } catch {
       setCopyFeedback('failed');
@@ -83,19 +82,19 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ calculation }) => {
               Compartir presupuesto
             </button>
             <button
-              onClick={handleCopyLink}
+              onClick={handleCopySummary}
               className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
             >
               {copyFeedback === 'copied' && '✓ Copiado'}
               {copyFeedback === 'failed' && 'No se pudo copiar'}
-              {!copyFeedback && 'Copiar enlace'}
+              {!copyFeedback && 'Copiar resumen'}
             </button>
           </div>
         )}
       </div>
 
       {showShare && (
-        <ShareModal calculation={calculation} onClose={() => setShowShare(false)} />
+        <ShareModal quote={quote} onClose={() => setShowShare(false)} />
       )}
     </>
   );

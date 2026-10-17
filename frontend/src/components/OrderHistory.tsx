@@ -85,7 +85,7 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({
   return (
     <div className="w-full bg-white rounded-lg shadow-md p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Historial de pedidos</h2>
+        <h3 className="text-lg font-semibold text-gray-900">Historial de pedidos</h3>
         {history.length > 0 &&
           (confirmingClear ? (
             <div className="flex gap-2">

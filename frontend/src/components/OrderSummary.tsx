@@ -166,7 +166,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   return (
     <div className="w-full bg-white rounded-lg shadow-md flex flex-col">
       <div className="p-4 pb-2 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Pedido</h2>
+        <h3 className="text-lg font-semibold text-gray-900">Pedido</h3>
         <p aria-live="polite" className="text-xs text-gray-500">
           {isLoading ? 'Calculando...' : ''}
         </p>

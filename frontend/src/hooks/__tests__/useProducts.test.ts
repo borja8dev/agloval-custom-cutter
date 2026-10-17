@@ -3,11 +3,11 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 
 vi.mock('../../services/api', () => ({
   listProducts: vi.fn(),
-  searchProducts: vi.fn(),
+  searchCatalogProducts: vi.fn(),
   getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback)
 }));
 
-import { listProducts, searchProducts } from '../../services/api';
+import { listProducts, searchCatalogProducts } from '../../services/api';
 import { useProducts } from '../useProducts';
 import { m2Product, udProduct } from '../../test/fixtures';
 
@@ -22,10 +22,10 @@ function deferred<T>() {
 describe('useProducts', () => {
   beforeEach(() => {
     mockedList.mockReset();
-    vi.mocked(searchProducts).mockReset();
+    vi.mocked(searchCatalogProducts).mockReset();
   });
 
-  test('old call signature loads the first page and exposes total', async () => {
+  test('without arguments loads the first page and exposes total', async () => {
     mockedList.mockResolvedValue({ products: [m2Product], count: 1, total: 9 });
     const { result } = renderHook(() => useProducts());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -89,13 +89,31 @@ describe('useProducts', () => {
     expect(result.current.error).toBe('fallo');
   });
 
-  test('search keeps the legacy behaviour', async () => {
+  test('uses the search endpoint, scoped to the family, for a query of 2+ characters', async () => {
     mockedList.mockResolvedValue({ products: [m2Product], count: 1, total: 1 });
-    vi.mocked(searchProducts).mockResolvedValue([]);
-    const { result } = renderHook(() => useProducts());
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await expect(result.current.search('a')).resolves.toEqual(result.current.products);
-    await result.current.search('blanca');
-    expect(searchProducts).toHaveBeenCalledWith('blanca');
+    vi.mocked(searchCatalogProducts).mockResolvedValue({ products: [udProduct], count: 1, total: 1 });
+    const { result } = renderHook(() => useProducts('FER', 'tornillo'));
+    await waitFor(() => expect(result.current.catalogProducts).toEqual([udProduct]));
+    expect(searchCatalogProducts).toHaveBeenCalledWith('tornillo', { family: 'FER', limit: 50 });
+    expect(mockedList).not.toHaveBeenCalled();
+  });
+
+  test('falls back to the family list when the query is shorter than 2 characters', async () => {
+    mockedList.mockResolvedValue({ products: [m2Product], count: 1, total: 1 });
+    const { result } = renderHook(() => useProducts('MEL', ' a '));
+    await waitFor(() => expect(result.current.catalogProducts).toEqual([m2Product]));
+    expect(searchCatalogProducts).not.toHaveBeenCalled();
+    expect(mockedList).toHaveBeenCalledWith({ family: 'MEL', limit: 50 });
+  });
+
+  test('refetches the family list when the query is cleared', async () => {
+    mockedList.mockResolvedValue({ products: [m2Product], count: 1, total: 1 });
+    vi.mocked(searchCatalogProducts).mockResolvedValue({ products: [udProduct], count: 1, total: 1 });
+    const { result, rerender } = renderHook(({ query }) => useProducts(undefined, query), {
+      initialProps: { query: 'tornillo' }
+    });
+    await waitFor(() => expect(result.current.catalogProducts).toEqual([udProduct]));
+    rerender({ query: '' });
+    await waitFor(() => expect(result.current.catalogProducts).toEqual([m2Product]));
   });
 });

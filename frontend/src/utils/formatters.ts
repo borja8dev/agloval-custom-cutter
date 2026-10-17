@@ -17,19 +17,6 @@ export function formatDimensions(width: number, height: number): string {
   return `${width} × ${height} cm`;
 }
 
-export function formatWaste(percentage: number): {
-  text: string;
-  level: 'low' | 'medium' | 'high';
-} {
-  if (percentage < 20) {
-    return { text: `${percentage.toFixed(1)}% (excelente)`, level: 'low' };
-  }
-  if (percentage < 50) {
-    return { text: `${percentage.toFixed(1)}% (bueno)`, level: 'medium' };
-  }
-  return { text: `${percentage.toFixed(1)}% (alto)`, level: 'high' };
-}
-
 export function formatDate(date: string | Date): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('es-ES', {

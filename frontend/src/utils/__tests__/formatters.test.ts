@@ -4,7 +4,6 @@ import {
   formatNumber,
   formatArea,
   formatDimensions,
-  formatWaste,
   formatTimeAgo,
   formatDecimal,
   unitLabel,
@@ -41,26 +40,6 @@ describe('Formatters', () => {
   describe('formatDimensions()', () => {
     test('should format dimensions', () => {
       expect(formatDimensions(300, 200)).toBe('300 × 200 cm');
-    });
-  });
-
-  describe('formatWaste()', () => {
-    test('should rate low waste', () => {
-      const result = formatWaste(15);
-      expect(result.level).toBe('low');
-      expect(result.text).toContain('excelente');
-    });
-
-    test('should rate medium waste', () => {
-      const result = formatWaste(35);
-      expect(result.level).toBe('medium');
-      expect(result.text).toContain('bueno');
-    });
-
-    test('should rate high waste', () => {
-      const result = formatWaste(75);
-      expect(result.level).toBe('high');
-      expect(result.text).toContain('alto');
     });
   });
 

@@ -1,9 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import {
-  CalculationRequest,
-  CalculationResponse,
-  Product,
   ApiResponse,
+  CatalogProduct,
   Family,
   OrderQuote,
   ProductListParams,
@@ -53,20 +51,7 @@ function definedOnly<T extends object>(params: T): Partial<T> {
   ) as Partial<T>;
 }
 
-export async function getProducts(limit: number = 50): Promise<Product[]> {
-  const response = await apiClient.get<ApiResponse<{ products: Product[] }>>(
-    '/api/products',
-    { params: { limit } }
-  );
-
-  if (!response.data.success || !response.data.data) {
-    throw new Error('Failed to fetch products');
-  }
-
-  return response.data.data.products;
-}
-
-export async function getProduct<T = Product>(productId: string): Promise<T> {
+export async function getProduct<T = CatalogProduct>(productId: string): Promise<T> {
   const response = await apiClient.get<ApiResponse<T>>(
     `/api/products/${productId}`
   );
@@ -76,24 +61,6 @@ export async function getProduct<T = Product>(productId: string): Promise<T> {
   }
 
   return response.data.data;
-}
-
-export async function searchProducts(query: string): Promise<Product[]> {
-  try {
-    const response = await apiClient.get<ApiResponse<{ products: Product[] }>>(
-      '/api/products/search',
-      { params: { q: query } }
-    );
-
-    if (!response.data.success || !response.data.data) {
-      return [];
-    }
-
-    return response.data.data.products;
-  } catch (error) {
-    console.error(`Error searching products for "${query}":`, error);
-    return [];
-  }
 }
 
 export async function getFamilies(): Promise<Family[]> {
@@ -158,39 +125,6 @@ export async function quoteOrder(
   }
 
   return response.data.data;
-}
-
-export async function createCalculation(
-  request: CalculationRequest
-): Promise<CalculationResponse> {
-  const response = await apiClient.post<ApiResponse<CalculationResponse>>(
-    '/api/calculations',
-    request
-  );
-
-  if (!response.data.success || !response.data.data) {
-    throw new Error('Failed to create calculation');
-  }
-
-  return response.data.data;
-}
-
-export async function getCalculation(
-  calculationId: string
-): Promise<CalculationResponse> {
-  const response = await apiClient.get<ApiResponse<CalculationResponse>>(
-    `/api/calculations/${calculationId}`
-  );
-
-  if (!response.data.success || !response.data.data) {
-    throw new Error('Calculation not found');
-  }
-
-  return response.data.data;
-}
-
-export async function deleteCalculation(calculationId: string): Promise<void> {
-  await apiClient.delete(`/api/calculations/${calculationId}`);
 }
 
 export default apiClient;
