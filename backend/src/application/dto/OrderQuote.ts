@@ -34,10 +34,10 @@ export interface OrderQuoteBoardGroupDTO {
   pieceCount: number;
   usedAreaM2: number;
   boardAreaM2: number;
-  boardsNeeded: number; // informational: ceil(used / board), minimum 1; not billed
+  boardsNeeded: number; // whole boards billed: ceil(used / board), minimum 1 (area-based estimate)
   pricePerM2: number; // €
-  pricePerBoard: number; // € informational: price of one full board
-  price: number; // € = usedAreaM2 x pricePerM2, rounded once
+  pricePerBoard: number; // € one whole board, rounded to cents
+  price: number; // € = boardsNeeded x pricePerBoard
 }
 
 export interface OrderQuoteUnitGroupDTO {

@@ -7,7 +7,7 @@ import {
 import { CalculationRequestDTO } from '../dto/CalculationRequest';
 import { CalculationResponseDTO } from '../dto/CalculationResponse';
 import { CuttingCalculator } from '../../domain/services/CuttingCalculator';
-import { priceUsedArea } from '../../domain/services/BoardPricing';
+import { priceWholeBoards } from '../../domain/services/BoardPricing';
 import {
   ProductNotFoundException,
   CalculationNotFoundException,
@@ -45,7 +45,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
     });
 
     const calculationResult = calculator.calculate(request.requestedPieces);
-    const { pricePerBoard, totalPrice } = priceUsedArea({
+    const { pricePerBoard, boardsNeeded, totalPrice } = priceWholeBoards({
       pieces: request.requestedPieces,
       boardAreaM2: (product.standardWidth * product.standardHeight) / 10000,
       pricePerM2: product.pricePerM2,
@@ -60,7 +60,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
       productId: product.id,
       requestedPieces: request.requestedPieces,
       totalAreaNeeded: calculationResult.totalAreaNeeded,
-      boardsUsed: calculationResult.boardsNeeded,
+      boardsUsed: boardsNeeded,
       pricePerBoard,
       totalPrice,
       userId: request.userId,
@@ -107,7 +107,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const calculationResult = calculator.calculate(requestedPieces);
     // A DRAFT update is a re-quote: price again from the product's current
     // prices, so create and update always apply the same formula.
-    const { pricePerBoard, totalPrice } = priceUsedArea({
+    const { pricePerBoard, boardsNeeded, totalPrice } = priceWholeBoards({
       pieces: requestedPieces,
       boardAreaM2: (existing.product.standardWidth * existing.product.standardHeight) / 10000,
       pricePerM2: existing.product.pricePerM2,
@@ -119,7 +119,7 @@ export class CalculationApplicationService implements ICalculateUseCase {
     const updated = await this.calculationRepository.update(calculationId, {
       requestedPieces,
       totalAreaNeeded: calculationResult.totalAreaNeeded,
-      boardsUsed: calculationResult.boardsNeeded,
+      boardsUsed: boardsNeeded,
       pricePerBoard,
       totalPrice,
     });

@@ -42,7 +42,7 @@ Calculates a cutting quote against a product's standard board and persists it.
 - `requestedPieces`: required, 1–100 pieces, each `{ width, height }` in cm, both finite. Minimum piece size is **2 cm wide x 15 cm high**, applied to each dimension as entered (a piece is never rotated to fit: 15 x 2 is rejected). The limits are the constants `MIN_PIECE_WIDTH_CM` and `MIN_PIECE_HEIGHT_CM` in `backend/src/domain/constants.ts`.
 - Only `M2` products can be calculated; any other unit returns `400 UNSUPPORTED_PRODUCT_UNIT`.
 
-**Pricing:** M2 products are billed by the **area actually used**: `totalPrice = totalAreaNeeded x pricePerM2`, with the area summed in cm2 over all pieces and rounded once to cents (never per piece). The leftover of the last board is not charged. `boardsNeeded = ceil(totalAreaNeeded / board area)` (an integer, minimum 1) is **informational** ("you will need N boards") and does not change the price. `pricing.pricePerBoard` is the informational price of one full board (`board area x pricePerM2`, rounded once), kept as a snapshot so history keeps showing the quoted price. Legacy products without `pricePerM2` derive it as `pricePerUnit / board area` and use the same formula, so nothing is billed by boards. `wastePercentage` is still returned (share of the boards to buy that is not used).
+**Pricing:** boards are bought whole, so M2 products are billed by whole boards. `boardsNeeded = ceil(totalAreaNeeded / board area)` (an integer, minimum 1; a small tolerance keeps float noise from adding a board) is an **area-based estimate**, not a nesting layout: 3.7 boards of area bill 4. `pricing.pricePerBoard = board area x pricePerM2`, rounded to cents once, and `totalPrice = boardsNeeded x pricePerBoard` in exact cents, so the unit price times the count equals the total. Legacy products without `pricePerM2` use `pricePerUnit` as the board price. `wastePercentage` is still returned (share of the boards to buy that is not used).
 - `userId`, `metadata`: optional. `userId` is stored as-is — there's no auth, so this is not verified against anything (see [Known Limitations](../README.md#known-limitations)).
 
 ```bash
@@ -75,7 +75,7 @@ curl -X POST http://localhost:5000/api/calculations \
       "pieceCount": 2,
       "averagePieceSize": 2.5
     },
-    "pricing": { "pricePerBoard": 93, "boardsNeeded": 1, "totalPrice": 77.5, "currency": "EUR" },
+    "pricing": { "pricePerBoard": 93, "boardsNeeded": 1, "totalPrice": 93, "currency": "EUR" },
     "metadata": { "calculatedAt": "2026-08-01T...", "validUntilDays": 30, "status": "DRAFT" }
   }
 }
@@ -113,7 +113,7 @@ curl -X PUT http://localhost:5000/api/calculations/cmsals6ur0001ftexloh38wgc \
   -d '{ "requestedPieces": [{ "width": 200, "height": 100 }] }'
 ```
 
-**Response `200`:** same shape as `POST`, with `id`/`product` unchanged and `calculation`/`pricing` recomputed (a re-quote: boards, `pricePerBoard` and `totalPrice` use the product's current prices and the same used-area formula as `POST`).
+**Response `200`:** same shape as `POST`, with `id`/`product` unchanged and `calculation`/`pricing` recomputed (a re-quote: boards, `pricePerBoard` and `totalPrice` use the product's current prices and the same whole-board formula as `POST`).
 
 **Errors:** `400 VALIDATION_ERROR`, `404 CALCULATION_NOT_FOUND`, `409 INVALID_CALCULATION_STATUS` (calculation isn't DRAFT — e.g. already SUBMITTED or COMPLETED).
 
@@ -154,7 +154,7 @@ Prices a whole order made of lines for different products. **Stateless**: nothin
 
 **Pricing:** every amount is computed in integer cents with a single rounding per group; `total` is the sum of the group prices, never a re-rounded float sum.
 
-- `BOARD` (`M2`): `price = usedAreaM2 x pricePerM2`, rounded once in cents, exactly like `POST /api/calculations` (legacy rows without `pricePerM2` use `pricePerUnit / board area`). `pieceCount` counts every copy and `usedAreaM2` is the area of all pieces. `boardsNeeded` (`ceil(used / board)`, minimum 1) and `pricePerBoard` (price of one full board, `boardAreaM2 x pricePerM2`) are informational and do not drive `price`; `pricePerM2` is the rate applied.
+- `BOARD` (`M2`): billed by whole boards, exactly like `POST /api/calculations`: `boardsNeeded = ceil(usedAreaM2 / boardAreaM2)` (minimum 1, an area-based estimate), `pricePerBoard = boardAreaM2 x pricePerM2` rounded to cents once, and `price = boardsNeeded x pricePerBoard` in cents (legacy rows without `pricePerM2` use `pricePerUnit` as the board price and show `pricePerUnit / boardAreaM2` as `pricePerM2`). `pieceCount` counts every copy and `usedAreaM2` is the area of all pieces.
 - `UNIT` (`UD`): `price = unitPrice x quantity`.
 - `LINEAR` (`ML`): `pricePerUnit` is the price per **metre**, `price = pricePerMeter x lengthM x quantity` where `quantity` is the number of bars and `lengthM` the length of one bar.
 
@@ -187,7 +187,7 @@ curl -X POST http://localhost:5000/api/orders/quote \
         "boardsNeeded": 6,
         "pricePerM2": 15.5,
         "pricePerBoard": 46.14,
-        "price": 250.33
+        "price": 276.84
       },
       {
         "kind": "UNIT",
@@ -205,7 +205,7 @@ curl -X POST http://localhost:5000/api/orders/quote \
         "price": 36
       }
     ],
-    "total": 290.53,
+    "total": 317.04,
     "currency": "EUR",
     "calculatedAt": "2026-10-09T10:00:00.000Z"
   }
@@ -307,7 +307,7 @@ curl "http://localhost:5000/api/products/search?q=blanca&family=MEL&unit=M2"
 }
 ```
 
-- `unit`: `UD` (sold by the piece), `M2` (boards, billed by the used area at `pricePerM2`) or `ML` (fixed length bar, `lengthCm`).
+- `unit`: `UD` (sold by the piece), `M2` (boards, billed by whole boards at `pricePerM2 x board area`) or `ML` (fixed length bar, `lengthCm`).
 - `standardWidth` / `standardHeight` (cm): board size, `null` unless `unit` is `M2`. `thickness` (mm) is nullable. `lengthCm` is set for `ML` only. `pricePerM2` is set for `M2` only.
 - `categoryName` is kept for backwards compatibility and always equals `familyName`.
 
