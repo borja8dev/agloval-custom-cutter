@@ -5,7 +5,7 @@ import {
   appendOrder,
   normalizeHistory,
   removeOrderEntry,
-  type OrderHistoryState
+  type OrderHistoryState,
 } from '../utils/orderHistory';
 import { useLocalStorage } from './useLocalStorage';
 
@@ -18,6 +18,8 @@ interface UseOrderHistoryReturn {
   addOrder: (quote: OrderQuote, lines: OrderLine[]) => void;
   removeOrder: (number: number) => void;
   clearHistory: () => void;
+  /** Number the next confirmed order will get; deleted numbers are never reused. */
+  nextNumber: number;
 }
 
 export function useOrderHistory(): UseOrderHistoryReturn {
@@ -45,5 +47,12 @@ export function useOrderHistory(): UseOrderHistoryReturn {
     [setData]
   );
 
-  return { history: state.orders, isLoading, addOrder, removeOrder, clearHistory };
+  return {
+    history: state.orders,
+    isLoading,
+    addOrder,
+    removeOrder,
+    clearHistory,
+    nextNumber: state.counter + 1,
+  };
 }

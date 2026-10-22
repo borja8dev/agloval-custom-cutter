@@ -55,6 +55,23 @@ describe('useOrderHistory', () => {
     expect(second.result.current.history.map((o) => o.number)).toEqual([3]);
   });
 
+  test('nextNumber starts at 1 and follows each confirmed order', async () => {
+    const { result } = await setup();
+    expect(result.current.nextNumber).toBe(1);
+    act(() => result.current.addOrder(makeQuote(), sampleLines));
+    expect(result.current.nextNumber).toBe(2);
+  });
+
+  test('nextNumber is not reused after removeOrder or clearHistory', async () => {
+    const { result } = await setup();
+    act(() => result.current.addOrder(makeQuote(), sampleLines));
+    act(() => result.current.addOrder(makeQuote(), sampleLines));
+    act(() => result.current.removeOrder(2));
+    expect(result.current.nextNumber).toBe(3);
+    act(() => result.current.clearHistory());
+    expect(result.current.nextNumber).toBe(3);
+  });
+
   test('caps the history at 50 entries', async () => {
     const { result } = await setup();
     act(() => {
