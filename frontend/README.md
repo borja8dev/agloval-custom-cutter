@@ -53,3 +53,11 @@ PORT=5001 CORS_ORIGIN=http://localhost:3101 npm run dev
 # frontend
 VITE_API_URL=http://localhost:5001 npm run dev -- --port 3101
 ```
+
+Most specs stub the order submission, so they never send mail. `order-submission.cy.ts` sends one real order and reads both emails back from Mailpit; it is skipped unless `CYPRESS_MAILPIT_URL` is set. Start Mailpit (`docker compose up -d mailpit`), point the backend at it (`SMTP_HOST=localhost`, `SMTP_PORT=1025`) and run:
+
+```bash
+CYPRESS_BASE_URL=http://localhost:3101 CYPRESS_MAILPIT_URL=http://localhost:8025 npx cypress run --spec cypress/e2e/order-submission.cy.ts
+```
+
+The backend accepts 5 submissions per 10 minutes per address, so run this spec on its own rather than in a loop.
