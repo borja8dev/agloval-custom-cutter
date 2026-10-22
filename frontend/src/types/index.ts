@@ -133,6 +133,25 @@ export interface OrderQuote {
   calculatedAt: string;
 }
 
+// POST /api/orders/submit
+export interface Customer {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface SubmitOrderRequest extends QuoteRequest {
+  orderNumber: number;
+  customer: Customer;
+  privacyAccepted: true;
+}
+
+export interface SubmitOrderResponse {
+  orderNumber: number;
+  quote: OrderQuote;
+  emails: { customer: 'sent'; agloval: 'sent' | 'skipped' };
+}
+
 // Local order state
 export interface OrderPiece extends Piece {
   quantity: number;

@@ -13,6 +13,7 @@ import {
   listProducts,
   searchCatalogProducts,
   quoteOrder,
+  submitOrder,
   getProduct,
   getErrorMessage
 } from '../api';
@@ -97,5 +98,51 @@ describe('catalog api', () => {
     post.mockRejectedValue(error);
     const caught = await quoteOrder({ lines: [] }).catch((e) => e);
     expect(getErrorMessage(caught, 'fallback')).toBe('Tornillo se vende por UD');
+  });
+
+  describe('submitOrder', () => {
+    const request = {
+      orderNumber: 3,
+      customer: { name: 'Lucía Ferrer', email: 'lucia@example.com', phone: '600 123 456' },
+      privacyAccepted: true as const,
+      lines: [{ productId: 'p_ud', quantity: 12 }]
+    };
+
+    test('posts the order to the submit endpoint and returns the result', async () => {
+      const result = {
+        orderNumber: 3,
+        quote: makeQuote(),
+        emails: { customer: 'sent', agloval: 'skipped' }
+      };
+      post.mockResolvedValue(ok(result));
+
+      await expect(submitOrder(request)).resolves.toEqual(result);
+      expect(post).toHaveBeenCalledWith('/api/orders/submit', request);
+    });
+
+    test('throws when the API reports failure', async () => {
+      post.mockResolvedValue({ data: { success: false, timestamp: 'x' } });
+      await expect(submitOrder(request)).rejects.toThrow();
+    });
+
+    test('surfaces the backend message through getErrorMessage', async () => {
+      const error = Object.assign(new Error('Request failed'), {
+        isAxiosError: true,
+        response: {
+          status: 502,
+          data: {
+            error: {
+              code: 'EMAIL_DELIVERY_FAILED',
+              message: 'No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.'
+            }
+          }
+        }
+      });
+      post.mockRejectedValue(error);
+      const caught = await submitOrder(request).catch((e) => e);
+      expect(getErrorMessage(caught, 'fallback')).toBe(
+        'No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.'
+      );
+    });
   });
 });

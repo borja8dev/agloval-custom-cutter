@@ -6,7 +6,9 @@ import {
   OrderQuote,
   ProductListParams,
   ProductListResult,
-  QuoteRequest
+  QuoteRequest,
+  SubmitOrderRequest,
+  SubmitOrderResponse
 } from '../types';
 
 export function getErrorMessage(err: unknown, fallback: string): string {
@@ -122,6 +124,19 @@ export async function quoteOrder(
 
   if (!response.data.success || !response.data.data) {
     throw new Error('Failed to quote order');
+  }
+
+  return response.data.data;
+}
+
+export async function submitOrder(request: SubmitOrderRequest): Promise<SubmitOrderResponse> {
+  const response = await apiClient.post<ApiResponse<SubmitOrderResponse>>(
+    '/api/orders/submit',
+    request
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to submit order');
   }
 
   return response.data.data;
