@@ -17,6 +17,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.3.0] - 2026-10-22
+
+The order manager. Changes agreed with Agloval after the v1.2.0 presentation: the tool carries Agloval's brand, the order stays in view while it is built, and a confirmed order is emailed to the customer and, once configured, to Agloval.
+
+### Added
+- Agloval branding: the "Gestor de pedidos" title, the Agloval logo, the brand cyan, and a "Volver a Agloval" link to the company website (configurable with `VITE_SITE_URL`).
+- An accessible window component (focus kept inside, Escape and backdrop to close, focus returned on close), used for the order history and for sharing.
+- A "Historial (N)" button in the header that opens the order history in a window.
+- An order panel that stays in view on wide screens, titled with the number the order will get ("Pedido nº N"), with a total that animates when it changes; on phones and tablets, a bottom bar with the order number, the line count and the total.
+- A "Tus datos" window on confirm that asks for name, email and phone, remembered in the browser as a simulated signed-in customer, with a greeting and "Cerrar sesión" in the header.
+- `POST /api/orders/submit`: prices the order again on the server and emails the quote to the customer, and to Agloval when `ORDER_NOTIFICATION_EMAIL` is set. Emails are in Spanish, in HTML and plain text. A per-IP limit of 5 submissions per 10 minutes protects it.
+- SMTP delivery through nodemailer, and a log-only mode when no SMTP server is configured, which keeps personal data out of the logs.
+- Mailpit in `docker compose` as a local test inbox (http://localhost:8025).
+- An end-to-end spec that submits a real order and reads both emails from Mailpit, run only when `CYPRESS_MAILPIT_URL` is set.
+
+### Changed
+- "Confirmar pedido" asks for the customer's details and sends the order; the success message reads "Pedido nº N enviado" with the address the quote went to.
+- The page has two columns on wide screens and three sections; buttons, selections and focus rings use Agloval's colours.
+- The browser tab reads "Gestor de pedidos · Agloval", and the footer names Aglomerados Valencia S.L.
+- `createExpressApp` takes a single dependencies object.
+- **Node 20 or newer is required** (nodemailer 10); the CI runs on Node 20.
+
+### Removed
+- The "4. Historial" block on the page (the history is in its window now).
+- The portfolio text in the footer.
+
+### Upgrade notes
+- Use Node 20 or newer.
+- No database migration.
+- Optional mail variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `ORDER_NOTIFICATION_EMAIL`. Without `SMTP_HOST` no email is sent. Keep `ORDER_NOTIFICATION_EMAIL` unset until Agloval decides to receive orders.
+- In development: `docker compose up -d mailpit` and `SMTP_HOST=localhost`, `SMTP_PORT=1025` in `backend/.env`.
+- Order numbers are still per browser, so two customers can both send a "Pedido nº 1"; a server-side number is needed before Agloval receives real orders.
+
 ## [1.2.0] - 2026-10-17
 
 The new order flow. The calculator screen is rebuilt around families, three sales units and a multi-line order, on top of the catalog and the order quote API released in 1.1.0.
