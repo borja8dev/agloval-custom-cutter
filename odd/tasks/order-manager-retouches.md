@@ -16,7 +16,7 @@ Turn the v1.2.0 calculator into the "Gestor de pedidos" with Agloval's branding,
 feature-branch-chain, as in the previous feature: the first PR targets `main`, each next PR targets the previous branch. Forecast well over 400 changed lines. Review mode is off for this clone.
 
 ## Tasks
-- [ ] T10 branding and header: brand colours, `AppHeader` with logo, "Gestor de pedidos" and "Volver a Agloval", title and footer (branch feat/order-manager-branding)
+- [x] T10 branding and header: brand colours, `AppHeader` with logo, "Gestor de pedidos" and "Volver a Agloval", title and footer (branch feat/order-manager-branding; route: delegated writer; RED observed for AppHeader, App and page tests; GREEN: 22 files / 202 tests, build, lint and cypress typecheck clean; checked in the browser at desktop and mobile widths)
 - [ ] T11 accessible `Modal`; history opened from a header button; block 4 removed
 - [ ] T12 two-column layout with a sticky order panel ("Pedido nº N", animated total) and a mobile bottom bar; `nextNumber` from `useOrderHistory`
 - [ ] T13 backend: `POST /api/orders/submit`, `IOrderNotifier` with SMTP (nodemailer) and log adapters, Spanish emails, per-IP limit, Mailpit in docker-compose, docs
