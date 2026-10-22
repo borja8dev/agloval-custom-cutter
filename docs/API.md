@@ -222,6 +222,61 @@ curl -X POST http://localhost:5000/api/orders/quote \
 - `400 INVALID_PIECE`: a piece is larger than the board of its product.
 - `500 INCOMPLETE_PRODUCT`: a catalog product lacks board dimensions (`M2`) or bar length (`ML`).
 
+### `POST /api/orders/submit`
+
+Confirms an order: the server prices the lines again (client prices are never trusted), emails the quote to the customer and, when `ORDER_NOTIFICATION_EMAIL` is set, to Agloval. Nothing is stored yet; `orderNumber` is the per-browser number the customer saw ("Pedido nº N"). Limited to 5 requests per IP every 10 minutes.
+
+**Request:**
+
+```json
+{
+  "orderNumber": 12,
+  "customer": { "name": "Lucía Ferrer", "email": "lucia@example.com", "phone": "+34 600 123 456" },
+  "privacyAccepted": true,
+  "lines": [
+    { "productId": "clv9t1a2k0001zzz9qqqqqqqq", "pieces": [{ "width": 100, "height": 80, "quantity": 2 }] },
+    { "productId": "clv9t1a2k0002zzz9qqqqqqqq", "quantity": 12 }
+  ]
+}
+```
+
+- `orderNumber`: integer, 1 to 1,000,000.
+- `customer.name`: 2 to 100 characters after trimming.
+- `customer.email`: a valid address, at most 254 characters.
+- `customer.phone`: digits, spaces, `+`, `(`, `)` and `-` only, with 6 to 15 digits.
+- `privacyAccepted`: must be `true`.
+- `lines`: exactly as in `POST /api/orders/quote`.
+
+**Response:** `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderNumber": 12,
+    "quote": { "groups": [ ... ], "total": 50.34, "currency": "EUR", "calculatedAt": "2026-10-22T10:00:00.000Z" },
+    "emails": { "customer": "sent", "agloval": "skipped" }
+  },
+  "timestamp": "...",
+  "requestId": "..."
+}
+```
+
+`quote` has the same shape as the `POST /api/orders/quote` response. `emails.agloval` is `"skipped"` while `ORDER_NOTIFICATION_EMAIL` is unset. The Agloval email (when sent) goes first and has `Reply-To` set to the customer; the customer email follows.
+
+```bash
+curl -X POST http://localhost:5000/api/orders/submit \
+  -H "Content-Type: application/json" \
+  -d '{"orderNumber":12,"customer":{"name":"Lucía Ferrer","email":"lucia@example.com","phone":"600 123 456"},"privacyAccepted":true,"lines":[{"productId":"clv9t1a2k0002zzz9qqqqqqqq","quantity":12}]}'
+```
+
+**Errors:**
+
+- `400 VALIDATION_ERROR`: malformed body. Customer fields carry Spanish messages for the form ("Introduce tu nombre", "Introduce un correo válido", "Introduce un teléfono válido", "Debes aceptar la política de privacidad") in `details.fieldErrors`.
+- `404 PRODUCT_NOT_FOUND`, `400 INVALID_ORDER_LINE`, `400 INVALID_PIECE`, `500 INCOMPLETE_PRODUCT`: as in `POST /api/orders/quote`.
+- `429 TOO_MANY_REQUESTS`: more than 5 submissions from the same IP within 10 minutes (counted before validation). A `Retry-After` header gives the seconds left.
+- `502 EMAIL_DELIVERY_FAILED`: the mail server refused or did not answer. The message is "No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos." If the Agloval email went out and the customer email failed, a retry emails Agloval again.
+
 ---
 
 ## Families
@@ -345,4 +400,6 @@ curl http://localhost:5000/health
 | `INVALID_DATA` | 400 | Any other Prisma request error, translated |
 | `MISSING_BOARD_DIMENSIONS` | 500 | A stored calculation references a product without board dimensions |
 | `INCOMPLETE_PRODUCT` | 500 | An order quote references a product without board dimensions (M2) or bar length (ML) |
+| `TOO_MANY_REQUESTS` | 429 | Too many order submissions from one IP (Spanish message) |
+| `EMAIL_DELIVERY_FAILED` | 502 | An order email could not be sent (Spanish message) |
 | `INTERNAL_SERVER_ERROR` | 500 | Unhandled error — message only shown outside production |

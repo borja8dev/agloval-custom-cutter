@@ -21,3 +21,19 @@ services:
           property: connectionString
       - key: CORS_ORIGIN
         sync: false # set manually once the Vercel frontend URL is known — see docs/DEPLOYMENT.md
+      # Order emails (docs/DEPLOYMENT.md). Without SMTP_HOST emails are only logged.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Leave unset until Agloval decides which address receives orders.
+      - key: ORDER_NOTIFICATION_EMAIL
+        sync: false

@@ -26,9 +26,11 @@ Domain exceptions (`DomainException` and its subclasses) carry an HTTP `statusCo
 
 ### Application (`src/application/`)
 
-- **`ports/in/`** — input ports (`ICalculateUseCase`, `IProductUseCase`): what infrastructure is allowed to call.
-- **`ports/out/`** — output ports (`IProductRepository`, `ICalculationRepository`): what infrastructure must implement for persistence. These also define the *record shapes* (`ProductRecord`, `CalculationRecord`) the application layer works with — plain, Prisma-agnostic types, not Prisma's generated types leaking upward.
+- **`ports/in/`** — input ports (`ICalculateUseCase`, `IProductUseCase`, `IOrderQuoteUseCase`, `IOrderSubmitUseCase`): what infrastructure is allowed to call. `IOrderQuoteUseCase` prices a whole multi-product order without storing it; `IOrderSubmitUseCase` re-prices a confirmed order through it and emails the quote.
+- **`ports/out/`** — output ports (`IProductRepository`, `ICalculationRepository`, `IOrderNotifier`): what infrastructure must implement for persistence and for sending order emails. These also define the *record shapes* (`ProductRecord`, `CalculationRecord`) the application layer works with — plain, Prisma-agnostic types, not Prisma's generated types leaking upward.
 - **`services/`** — `CalculationApplicationService` implements `ICalculateUseCase`: orchestrates `CuttingCalculator` + the output ports. No business logic lives here — computing area/waste/price is the domain's job; this layer's job is sequencing (fetch product → calculate → persist → shape the response) and translating persistence-layer exceptions into use-case-level ones (`ProductNotFoundException`, `CalculationNotFoundException`).
+- **Order services** — `QuoteOrderService` implements `IOrderQuoteUseCase` (loads the products once, merges lines of the same product, prices boards, units and bars). `SubmitOrderService` implements `IOrderSubmitUseCase`: it asks `IOrderQuoteUseCase` for a fresh quote, builds the emails, sends the Agloval email only when an address is configured and then the customer email, and turns any notifier failure into `EmailDeliveryException` (502).
+- **`notifications/`** — `orderEmails.ts`: pure builders for the Spanish customer and Agloval emails (subject, inline-styled HTML, plain text). Every customer-provided string and product name is HTML-escaped.
 - **`validation/`** — Zod schemas. Validate shape and basic constraints (positive numbers, string formats) before anything touches the domain. Domain validation (e.g. "this piece is bigger than the board") is a business rule and stays in `CuttingCalculator`, not duplicated here.
 - **`dto/`** — the actual wire contract (`CalculationRequestDTO`/`CalculationResponseDTO`). Deliberately distinct from `CalculationRecord` (see below) and from the Prisma schema — this is the layer that's allowed to change shape without forcing a migration.
 
@@ -36,7 +38,9 @@ Domain exceptions (`DomainException` and its subclasses) carry an HTTP `statusCo
 
 - **`web/`** — Express controllers, routes, middleware. Controllers are thin: validate (via middleware), call a use case, format the response (`BaseController.ok()`/`.error()`). No orchestration logic here.
 - **`persistence/`** — `ProductRepository`/`CalculationRepository` implement the output ports using Prisma. `mappers/` convert between Prisma's generated entity shapes and the ports' `ProductRecord`/`CalculationRecord` — this is the one place that knows about `Prisma.Decimal`, JSON columns, and Prisma's `include` shapes.
-- **`config/`** — `express.ts` wires the middleware chain and routes; `database.ts` holds the Prisma client singleton and a `healthCheck()`.
+- **`mail/`** — the two `IOrderNotifier` adapters. `SmtpOrderNotifier` sends through nodemailer to any SMTP server (Mailpit in development). `LogOrderNotifier` sends nothing and logs only the recipient domain and the subject. `createOrderNotifier(env)` picks SMTP when `SMTP_HOST` is set, otherwise the log adapter.
+- **`web/middleware/rateLimit.ts`** — an in-memory, per-IP fixed-window limiter, applied only to `POST /api/orders/submit`. It counts per process, which is enough for one instance.
+- **`config/`** — `express.ts` wires the middleware chain and routes from one dependencies object (`createExpressApp({ calculationUseCase, productUseCase, orderQuoteUseCase, orderSubmitUseCase, submitRateLimit? })`); `database.ts` holds the Prisma client singleton and a `healthCheck()`.
 
 ## Why the DTO/Record split
 

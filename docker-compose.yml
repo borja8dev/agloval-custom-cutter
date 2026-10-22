@@ -33,6 +33,17 @@ services:
     networks:
       - agloval-network
 
+  # Local inbox for development: the backend sends order emails here
+  # (SMTP_HOST=localhost, SMTP_PORT=1025); read them at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    container_name: agloval_mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - agloval-network
+
 volumes:
   postgres_data:
 

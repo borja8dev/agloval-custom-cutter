@@ -77,6 +77,22 @@ Running Cypress against a cold `npm run dev` (still compiling/hot-reloading) is 
 
 ---
 
+### Where do the order emails go in development?
+
+To Mailpit, a local SMTP catcher with a web inbox. Nothing reaches a real mailbox.
+
+```bash
+docker compose up -d mailpit   # from the repo root
+```
+
+Set `SMTP_HOST=localhost` and `SMTP_PORT=1025` for the backend, restart it, and open the inbox at http://localhost:8025. Without `SMTP_HOST` the backend only logs `[mail disabled] Not sent to *@domain: "subject"`. A `502 EMAIL_DELIVERY_FAILED` from `POST /api/orders/submit` usually means `SMTP_HOST` is set but Mailpit is not running. To check delivery end to end:
+
+```bash
+cd backend && MAILPIT_URL=http://localhost:8025 npx jest mailpit
+```
+
+---
+
 ### "Module not found" after pulling new changes
 
 Root `package.json` doesn't use npm workspaces — `frontend/` and `backend/` have independent `node_modules`. After pulling changes that touch dependencies, reinstall both:
