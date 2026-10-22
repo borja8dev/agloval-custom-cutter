@@ -1,3 +1,4 @@
+import { TEST_CUSTOMER } from '../support/customer'
 import { formatCents, groupPriceCents } from '../support/money'
 
 const SUPERPAN = 'SUPERPAN WHITE SR209 SM 10mm 285x210'
@@ -17,10 +18,6 @@ const buildOrder = (screws = 3) => {
     .then((text) => text.replace('Total: ', ''))
 }
 
-const confirmOrder = () => {
-  cy.contains('button', 'Confirmar pedido').should('be.enabled').click()
-}
-
 describe('Order history', () => {
   beforeEach(() => {
     cy.visitCalculator()
@@ -36,9 +33,12 @@ describe('Order history', () => {
 
   it('saves a confirmed order, empties the current one and lists it in the history', () => {
     buildOrder().then((total) => {
-      confirmOrder()
+      cy.confirmOrder()
 
-      cy.get('[role="status"]').should('contain', 'Pedido #1 guardado')
+      cy.get('[role="status"]')
+        .should('contain', 'Pedido nº 1 enviado')
+        .and('contain', TEST_CUSTOMER.email)
+      cy.get('header').should('contain', 'Hola, Prueba')
       cy.get('[data-testid="order-line"]').should('not.exist')
       cy.get('[data-testid="order-total"]').should('contain', '0,00 EUR')
       cy.contains('button', 'Confirmar pedido').should('be.disabled')
@@ -55,7 +55,7 @@ describe('Order history', () => {
 
   it('expands an entry to show the breakdown and collapses it again', () => {
     buildOrder().then((total) => {
-      confirmOrder()
+      cy.confirmOrder()
       cy.openHistory()
       const entry = () => cy.get('[data-testid="history-entry"]').first()
 
@@ -74,7 +74,7 @@ describe('Order history', () => {
 
   it('reloads the lines and the total with "Volver a pedir"', () => {
     buildOrder(4).then((total) => {
-      confirmOrder()
+      cy.confirmOrder()
       cy.get('[data-testid="order-line"]').should('not.exist')
 
       cy.openHistory()
@@ -97,12 +97,12 @@ describe('Order history', () => {
 
   it('never reuses an order number after deleting one', () => {
     buildOrder(1)
-    confirmOrder()
-    cy.get('[role="status"]').should('contain', 'Pedido #1 guardado')
+    cy.confirmOrder()
+    cy.get('[role="status"]').should('contain', 'Pedido nº 1 enviado')
 
     buildOrder(2)
-    confirmOrder()
-    cy.get('[role="status"]').should('contain', 'Pedido #2 guardado')
+    cy.confirmOrder()
+    cy.get('[role="status"]').should('contain', 'Pedido nº 2 enviado')
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').should('have.length', 2)
     cy.get('[data-testid="history-entry"]').first().should('contain', 'Pedido #2')
@@ -112,8 +112,8 @@ describe('Order history', () => {
     cy.closeHistory()
 
     buildOrder(3)
-    confirmOrder()
-    cy.get('[role="status"]').should('contain', 'Pedido #3 guardado')
+    cy.confirmOrder()
+    cy.get('[role="status"]').should('contain', 'Pedido nº 3 enviado')
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').then(($entries) => {
       expect($entries).to.have.length(2)
@@ -125,7 +125,7 @@ describe('Order history', () => {
 
   it('needs two clicks to clear the history', () => {
     buildOrder()
-    confirmOrder()
+    cy.confirmOrder()
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').should('have.length', 1)
 
@@ -144,7 +144,7 @@ describe('Order history', () => {
 
   it('keeps the history after reloading the page', () => {
     buildOrder().then((total) => {
-      confirmOrder()
+      cy.confirmOrder()
       cy.contains('header button', 'Historial (1)').should('be.visible')
 
       cy.reload()

@@ -90,11 +90,11 @@ describe('Responsive layout', () => {
         cy.contains('button', 'Confirmar pedido').should('be.visible')
 
         // Several saved orders make the history overflow its own container.
-        cy.contains('button', 'Confirmar pedido').click()
+        cy.confirmOrder()
         cy.contains('header button', 'Historial (1)').should('exist')
         for (let i = 0; i < 6; i++) {
           cy.addQuantity(i + 1)
-          cy.contains('button', 'Confirmar pedido').click()
+          cy.confirmOrder()
           cy.contains('header button', `Historial (${i + 2})`).should('exist')
         }
         cy.openHistory()
