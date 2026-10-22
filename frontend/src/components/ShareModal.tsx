@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { OrderQuote } from '../types';
 import { buildOrderText, shareViaWhatsApp, shareViaEmail } from '../services/export';
+import { Modal } from './Modal';
 
 interface ShareModalProps {
   quote: OrderQuote;
@@ -26,51 +27,38 @@ export const ShareModal: React.FC<ShareModalProps> = ({ quote, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Compartir presupuesto</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-gray-800 text-2xl"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <button
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => shareViaWhatsApp(quote)}
-          >
-            Compartir por WhatsApp
-          </button>
-
-          <button
-            className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors"
-            onClick={() => shareViaEmail(quote)}
-          >
-            Enviar por email
-          </button>
-
-          <button
-            className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-            onClick={handleCopySummary}
-          >
-            {copyFeedback === 'copied' && '✓ Resumen copiado'}
-            {copyFeedback === 'failed' && 'No se pudo copiar'}
-            {!copyFeedback && 'Copiar resumen'}
-          </button>
-        </div>
+    <Modal open onClose={onClose} title="Compartir presupuesto">
+      <div className="space-y-3">
+        <button
+          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          onClick={() => shareViaWhatsApp(quote)}
+        >
+          Compartir por WhatsApp
+        </button>
 
         <button
-          onClick={onClose}
-          className="w-full mt-4 bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+          className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors"
+          onClick={() => shareViaEmail(quote)}
         >
-          Cerrar
+          Enviar por email
+        </button>
+
+        <button
+          className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+          onClick={handleCopySummary}
+        >
+          {copyFeedback === 'copied' && '✓ Resumen copiado'}
+          {copyFeedback === 'failed' && 'No se pudo copiar'}
+          {!copyFeedback && 'Copiar resumen'}
         </button>
       </div>
-    </div>
+
+      <button
+        onClick={onClose}
+        className="w-full mt-4 bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+      >
+        Cerrar
+      </button>
+    </Modal>
   );
 };

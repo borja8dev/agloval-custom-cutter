@@ -7,17 +7,18 @@ describe('Product selection', () => {
     cy.visitCalculator()
   })
 
-  it('shows the four blocks in order', () => {
+  it('shows the three blocks in order', () => {
     cy.contains('h1', 'Gestor de pedidos').should('be.visible')
     cy.get('h2').then(($headings) => {
       expect([...$headings].map((h) => h.textContent)).to.deep.equal([
         '1. Selecciona producto',
         '2. Medidas y cantidad',
         '3. Pedido actual',
-        '4. Historial',
       ])
     })
     cy.get('section[aria-labelledby="block-products"]').should('exist')
+    cy.get('section[aria-labelledby="block-history"]').should('not.exist')
+    cy.contains('header button', 'Historial (0)').should('be.visible')
   })
 
   it('lists the families with their product counts', () => {

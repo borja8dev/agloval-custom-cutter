@@ -119,6 +119,18 @@ describe('OrderHistory', () => {
     expect(document.querySelector('[aria-live="polite"]')).not.toBeNull();
   });
 
+  test('shows its own title by default', () => {
+    setup();
+    expect(screen.getByRole('heading', { name: 'Historial de pedidos' })).toBeInTheDocument();
+  });
+
+  test('hides its own title when the container already provides one', () => {
+    setup({ hideTitle: true });
+    expect(screen.queryByRole('heading', { name: 'Historial de pedidos' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Vaciar historial' })).toBeInTheDocument();
+    expect(screen.getAllByTestId('history-entry')).toHaveLength(3);
+  });
+
   test('never shows waste information', async () => {
     setup();
     await userEvent.click(screen.getAllByRole('button', { name: /Pedido #3/ })[0]);

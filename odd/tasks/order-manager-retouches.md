@@ -17,7 +17,7 @@ feature-branch-chain, as in the previous feature: the first PR targets `main`, e
 
 ## Tasks
 - [x] T10 branding and header: brand colours, `AppHeader` with logo, "Gestor de pedidos" and "Volver a Agloval", title and footer (branch feat/order-manager-branding; route: delegated writer; RED observed for AppHeader, App and page tests; GREEN: 22 files / 202 tests, build, lint and cypress typecheck clean; checked in the browser at desktop and mobile widths)
-- [ ] T11 accessible `Modal`; history opened from a header button; block 4 removed
+- [x] T11 accessible `Modal`; history opened from a header button; block 4 removed (branch feat/history-window; route: delegated writer; RED observed per test file; GREEN: 23 files / 215 tests, build, lint and cypress typecheck clean; Cypress history 8/8, product-selection 9/9, responsive 12/12, cutting-calculator 11/11; checked in the browser. Known: focus returns to body after closing the share window because its opener is a menu item that disappears)
 - [ ] T12 two-column layout with a sticky order panel ("Pedido nº N", animated total) and a mobile bottom bar; `nextNumber` from `useOrderHistory`
 - [ ] T13 backend: `POST /api/orders/submit`, `IOrderNotifier` with SMTP (nodemailer) and log adapters, Spanish emails, per-IP limit, Mailpit in docker-compose, docs
 - [ ] T14 frontend: customer details window on confirm, submission, simulated session in the header
