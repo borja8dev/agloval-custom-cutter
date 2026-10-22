@@ -1,6 +1,6 @@
-# Agloval Custom Cutter - Frontend
+# Gestor de pedidos (Agloval) - Frontend
 
-React 18 application with TypeScript for the custom cutting calculator UI.
+React 18 application with TypeScript for the Gestor de pedidos (Agloval) order manager UI.
 
 ## Architecture
 

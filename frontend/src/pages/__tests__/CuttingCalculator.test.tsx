@@ -82,7 +82,8 @@ describe('CuttingCalculator page', () => {
   test('shows the four blocks in order with their headings', async () => {
     await renderPage();
 
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    const titles = screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent);
+    expect(titles).toEqual(['Gestor de pedidos']);
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
       '1. Selecciona producto',
