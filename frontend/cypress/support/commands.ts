@@ -1,3 +1,4 @@
+import { TEST_CUSTOMER } from './customer'
 import { parseCents } from './money'
 
 declare global {
@@ -22,6 +23,11 @@ declare global {
       openHistory(): Chainable<JQuery<HTMLElement>>
       /** Closes the history window with its close button. */
       closeHistory(): Chainable<void>
+      /**
+       * Confirms the current order: fills "Tus datos" with test data and submits it. The
+       * submission is stubbed so no mail is sent and the per-IP limit is not consumed.
+       */
+      confirmOrder(): Chainable<void>
     }
   }
 }
@@ -113,6 +119,39 @@ Cypress.Commands.add('openHistory', () => {
 
 Cypress.Commands.add('closeHistory', () => {
   cy.get('[role="dialog"]').find('button[aria-label="Cerrar"]').click()
+  cy.get('[role="dialog"]').should('not.exist')
+})
+
+Cypress.Commands.add('confirmOrder', () => {
+  cy.intercept('POST', '**/api/orders/submit', (req) => {
+    const body = req.body as { orderNumber: number }
+    req.reply({
+      statusCode: 201,
+      body: {
+        success: true,
+        data: {
+          orderNumber: body.orderNumber,
+          quote: { groups: [], total: 0, currency: 'EUR', calculatedAt: new Date().toISOString() },
+          emails: { customer: 'sent', agloval: 'skipped' },
+        },
+        timestamp: new Date().toISOString(),
+      },
+    })
+  }).as('submitOrder')
+  cy.contains('button', 'Confirmar pedido').should('be.enabled').click()
+  cy.get('[role="dialog"]')
+    .should('contain', 'Tus datos')
+    .within(() => {
+      cy.get('input[autocomplete="name"]').clear()
+      cy.get('input[autocomplete="name"]').type(TEST_CUSTOMER.name)
+      cy.get('input[autocomplete="email"]').clear()
+      cy.get('input[autocomplete="email"]').type(TEST_CUSTOMER.email)
+      cy.get('input[autocomplete="tel"]').clear()
+      cy.get('input[autocomplete="tel"]').type(TEST_CUSTOMER.phone)
+      cy.get('input[type="checkbox"]').check()
+      cy.contains('button', 'Enviar pedido').click()
+    })
+  cy.wait('@submitOrder')
   cy.get('[role="dialog"]').should('not.exist')
 })
 

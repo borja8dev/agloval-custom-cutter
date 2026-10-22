@@ -4,7 +4,9 @@ import { useProducts } from '../hooks/useProducts';
 import { useOrder } from '../hooks/useOrder';
 import { useOrderQuote } from '../hooks/useOrderQuote';
 import { useOrderHistory } from '../hooks/useOrderHistory';
+import { useCustomerSession } from '../hooks/useCustomerSession';
 import { reorderFromHistory } from '../services/reorder';
+import { getErrorMessage, submitOrder } from '../services/api';
 import { FamilySelect } from '../components/FamilySelect';
 import { ProductList } from '../components/ProductList';
 import { OrderLineForm } from '../components/OrderLineForm';
@@ -15,8 +17,9 @@ import { Alert } from '../components/Alert';
 import { AppHeader } from '../components/AppHeader';
 import { Modal } from '../components/Modal';
 import { OrderBar } from '../components/OrderBar';
+import { CustomerDetailsForm } from '../components/CustomerDetailsForm';
 import { formatDecimal } from '../utils/formatters';
-import type { CatalogProduct, OrderHistoryEntry } from '../types';
+import type { CatalogProduct, Customer, OrderHistoryEntry } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -28,16 +31,22 @@ const statusClass = {
   success: 'bg-green-50 text-green-800 border-green-200',
   warning: 'bg-yellow-50 text-yellow-800 border-yellow-200',
 };
+const headerPillClass =
+  'bg-white text-brand-dark font-semibold rounded-full px-4 py-2 text-sm hover:bg-brand-light focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-header';
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0];
 
 export const CuttingCalculator: React.FC = () => {
   const [family, setFamily] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
-  const [confirmPending, setConfirmPending] = useState(false);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
   const [isReordering, setIsReordering] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { families, isLoading: isLoadingFamilies, error: familiesError } = useFamilies();
   const {
@@ -50,6 +59,7 @@ export const CuttingCalculator: React.FC = () => {
   const order = useOrder();
   const { quote, isLoading: isQuoting, error: quoteError } = useOrderQuote(order.toQuoteRequest());
   const { history, addOrder, removeOrder, clearHistory, nextNumber } = useOrderHistory();
+  const session = useCustomerSession();
   const orderHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -57,20 +67,43 @@ export const CuttingCalculator: React.FC = () => {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // The new order number is read back from the history once it has been saved.
-  useEffect(() => {
-    if (confirmPending && history.length > 0) {
-      setOrderStatus({ kind: 'success', message: `Pedido #${history[0].number} guardado` });
-      setConfirmPending(false);
-    }
-  }, [confirmPending, history]);
-
   const handleConfirm = () => {
     if (!quote || order.lines.length === 0) return;
-    addOrder(quote, order.lines);
-    order.clear();
-    setOrderStatus(null);
-    setConfirmPending(true);
+    setSubmitError(null);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    if (!isSubmitting) setDetailsOpen(false);
+  };
+
+  const handleSubmitDetails = async (details: Customer) => {
+    const confirmedQuote = quote;
+    if (isSubmitting || !confirmedQuote) return;
+    const orderNumber = nextNumber;
+    const lines = order.lines;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitOrder({
+        orderNumber,
+        customer: details,
+        privacyAccepted: true,
+        lines: order.toQuoteRequest().lines,
+      });
+      session.save(details);
+      addOrder(confirmedQuote, lines);
+      order.clear();
+      setDetailsOpen(false);
+      setOrderStatus({
+        kind: 'success',
+        message: `Pedido nº ${orderNumber} enviado. Te hemos mandado el presupuesto a ${details.email}.`,
+      });
+    } catch (err) {
+      setSubmitError(getErrorMessage(err, 'No se pudo enviar el pedido. Inténtalo de nuevo.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const showOrder = () => {
@@ -113,14 +146,28 @@ export const CuttingCalculator: React.FC = () => {
     <>
       <AppHeader
         actions={
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            onClick={() => setHistoryOpen(true)}
-            className="bg-white text-brand-dark font-semibold rounded-full px-4 py-2 text-sm hover:bg-brand-light focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-header"
-          >
-            Historial ({history.length})
-          </button>
+          <>
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => setHistoryOpen(true)}
+              className={headerPillClass}
+            >
+              Historial ({history.length})
+            </button>
+            {session.customer && (
+              <div className="flex items-center gap-2 bg-white text-brand-dark rounded-full pl-4 pr-1 py-1 text-sm">
+                <span className="font-semibold">Hola, {firstName(session.customer.name)}</span>
+                <button
+                  type="button"
+                  onClick={session.logout}
+                  className="rounded-full bg-brand-light px-3 py-1 font-medium hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+          </>
         }
       />
 
@@ -200,6 +247,7 @@ export const CuttingCalculator: React.FC = () => {
                 onUpdateQuantity={order.updateQuantity}
                 onRemoveLine={order.removeLine}
                 onConfirm={handleConfirm}
+                isConfirming={isSubmitting}
                 onClear={order.clear}
                 orderNumber={nextNumber}
               />
@@ -233,6 +281,16 @@ export const CuttingCalculator: React.FC = () => {
           onClear={clearHistory}
           isReordering={isReordering}
           hideTitle
+        />
+      </Modal>
+
+      <Modal open={detailsOpen} onClose={closeDetails} title="Tus datos">
+        <CustomerDetailsForm
+          initialCustomer={session.customer}
+          isSending={isSubmitting}
+          error={submitError}
+          onSubmit={handleSubmitDetails}
+          onCancel={closeDetails}
         />
       </Modal>
     </>

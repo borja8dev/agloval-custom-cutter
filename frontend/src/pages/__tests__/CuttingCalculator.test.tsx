@@ -7,6 +7,7 @@ vi.mock('../../services/api', () => ({
   listProducts: vi.fn(),
   searchCatalogProducts: vi.fn(),
   quoteOrder: vi.fn(),
+  submitOrder: vi.fn(),
   getProduct: vi.fn(),
   getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
 }));
@@ -17,6 +18,7 @@ import {
   listProducts,
   quoteOrder,
   searchCatalogProducts,
+  submitOrder,
 } from '../../services/api';
 import { CuttingCalculator } from '../CuttingCalculator';
 import { makeQuote, m2Product, mlProduct, udProduct } from '../../test/fixtures';
@@ -34,8 +36,16 @@ const page = (products: CatalogProduct[]) => ({
 });
 
 const mockedQuote = vi.mocked(quoteOrder);
+const mockedSubmit = vi.mocked(submitOrder);
+
+const lucia = { name: 'Lucía Ferrer', email: 'lucia@example.com', phone: '600 123 456' };
 
 function resetMocks() {
+  mockedSubmit.mockImplementation(async (request) => ({
+    orderNumber: request.orderNumber,
+    quote: makeQuote({ total: 123.45 }),
+    emails: { customer: 'sent', agloval: 'skipped' },
+  }));
   vi.mocked(getFamilies).mockResolvedValue(families);
   vi.mocked(listProducts).mockImplementation(async ({ family }: ProductListParams = {}) => {
     if (family === 'MEL') return page([m2Product]);
@@ -78,6 +88,29 @@ async function addUnitLine(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByTestId('add-line-btn'));
 }
 
+// Opens "Tus datos" from "Confirmar pedido" and yields the window.
+async function openDetails(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+  return screen.getByRole('dialog', { name: 'Tus datos' });
+}
+
+// Confirms the current order with the customer's details and waits for the window to close.
+async function confirmOrder(user: ReturnType<typeof userEvent.setup>, customer = lucia) {
+  const dialog = within(await openDetails(user));
+  await user.clear(dialog.getByLabelText('Nombre'));
+  await user.type(dialog.getByLabelText('Nombre'), customer.name);
+  await user.clear(dialog.getByLabelText('Correo electrónico'));
+  await user.type(dialog.getByLabelText('Correo electrónico'), customer.email);
+  await user.clear(dialog.getByLabelText('Teléfono'));
+  await user.type(dialog.getByLabelText('Teléfono'), customer.phone);
+  await user.click(dialog.getByRole('checkbox'));
+  await user.click(dialog.getByRole('button', { name: 'Enviar pedido' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+}
+
+const sentMessage = (number: number, email = lucia.email) =>
+  `Pedido nº ${number} enviado. Te hemos mandado el presupuesto a ${email}.`;
+
 async function openHistory(user: ReturnType<typeof userEvent.setup>, count: number) {
   await user.click(screen.getByRole('button', { name: `Historial (${count})` }));
   return screen.getByRole('dialog', { name: 'Historial de pedidos' });
@@ -91,6 +124,7 @@ describe('CuttingCalculator page', () => {
     vi.mocked(searchCatalogProducts).mockReset();
     vi.mocked(getProduct).mockReset();
     mockedQuote.mockReset();
+    mockedSubmit.mockReset();
     resetMocks();
   });
 
@@ -173,15 +207,42 @@ describe('CuttingCalculator page', () => {
     expect(block).toContainElement(screen.getByTestId('order-total'));
   });
 
-  test('confirming saves Pedido #1, clears the order and lists it in the history window', async () => {
+  test('"Confirmar pedido" opens "Tus datos" without saving the order yet', async () => {
     const user = await renderPage();
     await addBoardPiece(user);
     await screen.findByText(/Total: 123,45 EUR/);
 
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    const dialog = await openDetails(user);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Pedido #1 guardado');
-    await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
+    expect(within(dialog).getByLabelText('Nombre')).toHaveValue('');
+    expect(mockedSubmit).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId('order-line')).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('order-line')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Historial (0)' })).toBeInTheDocument();
+  });
+
+  test('submitting the details sends the order, saves Pedido #1, clears it and greets the customer', async () => {
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+
+    await confirmOrder(user);
+
+    expect(mockedSubmit).toHaveBeenCalledWith({
+      orderNumber: 1,
+      customer: lucia,
+      privacyAccepted: true,
+      lines: [{ productId: m2Product.id, pieces: [{ width: 100, height: 80, quantity: 20 }] }],
+    });
+    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    expect(block.getByRole('status')).toHaveTextContent(sentMessage(1));
+    expect(screen.queryAllByTestId('order-line')).toHaveLength(0);
+    const banner = within(screen.getByRole('banner'));
+    expect(banner.getByText('Hola, Lucía')).toBeInTheDocument();
+    expect(banner.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
 
     const dialog = await openHistory(user, 1);
     const entries = within(dialog).getAllByTestId('history-entry');
@@ -190,12 +251,98 @@ describe('CuttingCalculator page', () => {
     expect(within(dialog).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
   });
 
+  test('a failed submission keeps the order and the window open and shows the server message', async () => {
+    mockedSubmit.mockRejectedValue(
+      new Error('No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.')
+    );
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+
+    const dialog = within(await openDetails(user));
+    await user.type(dialog.getByLabelText('Nombre'), lucia.name);
+    await user.type(dialog.getByLabelText('Correo electrónico'), lucia.email);
+    await user.type(dialog.getByLabelText('Teléfono'), lucia.phone);
+    await user.click(dialog.getByRole('checkbox'));
+    await user.click(dialog.getByRole('button', { name: 'Enviar pedido' }));
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.'
+    );
+    expect(screen.getByRole('dialog', { name: 'Tus datos' })).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Enviar pedido' })).toBeEnabled();
+    expect(screen.getAllByTestId('order-line')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Historial (0)' })).toBeInTheDocument();
+    expect(screen.queryByText(/Hola,/)).not.toBeInTheDocument();
+  });
+
+  test('shows the sending state on the confirm and submit buttons', async () => {
+    let resolveSubmit: () => void = () => {};
+    mockedSubmit.mockImplementation(
+      (request) =>
+        new Promise((resolve) => {
+          resolveSubmit = () =>
+            resolve({
+              orderNumber: request.orderNumber,
+              quote: makeQuote({ total: 123.45 }),
+              emails: { customer: 'sent', agloval: 'skipped' },
+            });
+        })
+    );
+    localStorage.setItem('agloval_customer_v1', JSON.stringify(lucia));
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+
+    const dialog = within(await openDetails(user));
+    await user.click(dialog.getByRole('checkbox'));
+    await user.click(dialog.getByRole('button', { name: 'Enviar pedido' }));
+
+    expect(dialog.getByRole('button', { name: 'Enviando...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmando...' })).toBeDisabled();
+
+    resolveSubmit();
+    expect(await screen.findByText(sentMessage(1))).toBeInTheDocument();
+  });
+
+  test('"Cerrar sesión" removes the greeting and keeps the history', async () => {
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+    await confirmOrder(user);
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(screen.queryByText('Hola, Lucía')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Historial (1)' })).toBeInTheDocument();
+    expect(localStorage.getItem('agloval_customer_v1')).toBe('null');
+  });
+
+  test('prefills the next confirmation with the remembered details', async () => {
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+    await confirmOrder(user);
+
+    await addUnitLine(user);
+    await waitFor(() => expect(screen.getAllByTestId('order-line')).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeEnabled()
+    );
+    const dialog = within(await openDetails(user));
+
+    expect(dialog.getByLabelText('Nombre')).toHaveValue(lucia.name);
+    expect(dialog.getByLabelText('Correo electrónico')).toHaveValue(lucia.email);
+    expect(dialog.getByLabelText('Teléfono')).toHaveValue(lucia.phone);
+  });
+
   test('"Volver a pedir" closes the history window and reloads the lines of a past order', async () => {
     const user = await renderPage();
     await addBoardPiece(user);
     await addUnitLine(user);
     await screen.findByText(/Total: 123,45 EUR/);
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    await confirmOrder(user);
     await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
 
     const dialog = await openHistory(user, 1);
@@ -214,7 +361,7 @@ describe('CuttingCalculator page', () => {
     await addBoardPiece(user);
     await addUnitLine(user);
     await screen.findByText(/Total: 123,45 EUR/);
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    await confirmOrder(user);
     await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
     vi.mocked(getProduct).mockImplementation(async (id: string) => {
       if (id === m2Product.id) return m2Product;
@@ -235,8 +382,8 @@ describe('CuttingCalculator page', () => {
     const user = await renderPage();
     await addBoardPiece(user);
     await screen.findByText(/Total: 123,45 EUR/);
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
-    await screen.findByText('Pedido #1 guardado');
+    await confirmOrder(user);
+    await screen.findByText(sentMessage(1));
 
     expect(document.body.textContent).not.toMatch(/desperdicio|aprovechamiento|utilizaci/i);
   });
@@ -255,8 +402,8 @@ describe('CuttingCalculator page', () => {
 
     await addBoardPiece(user);
     await screen.findByText(/Total: 123,45 EUR/);
-    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
-    await screen.findByText('Pedido #1 guardado');
+    await confirmOrder(user);
+    await screen.findByText(sentMessage(1));
 
     expect(block().getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 2');
   });
