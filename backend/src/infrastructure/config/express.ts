@@ -5,19 +5,39 @@ import { createOrderRoutes } from '../web/routes/orders.routes';
 import { createFamilyRoutes, createProductRoutes } from '../web/routes/products.routes';
 import { CalculationController } from '../web/controllers/CalculationController';
 import { OrderQuoteController } from '../web/controllers/OrderQuoteController';
+import { OrderSubmitController } from '../web/controllers/OrderSubmitController';
 import { ProductController } from '../web/controllers/ProductController';
 import { requestLogger, responseTime } from '../web/middleware/logging';
 import { errorHandler } from '../web/middleware/errorHandler';
+import { RateLimitOptions, createRateLimit } from '../web/middleware/rateLimit';
 import { ICalculateUseCase } from '../../application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../application/ports/in/OrderQuoteUseCase';
+import { IOrderSubmitUseCase } from '../../application/ports/in/OrderSubmitUseCase';
 
-export function createExpressApp(
-  calculationUseCase: ICalculateUseCase,
-  productUseCase: IProductUseCase,
-  orderQuoteUseCase: IOrderQuoteUseCase
-): Express {
+export interface AppDependencies {
+  calculationUseCase: ICalculateUseCase;
+  productUseCase: IProductUseCase;
+  orderQuoteUseCase: IOrderQuoteUseCase;
+  orderSubmitUseCase: IOrderSubmitUseCase;
+  /** Per-IP limit for POST /api/orders/submit; defaults to 5 per 10 minutes. */
+  submitRateLimit?: RateLimitOptions;
+}
+
+export function createExpressApp({
+  calculationUseCase,
+  productUseCase,
+  orderQuoteUseCase,
+  orderSubmitUseCase,
+  submitRateLimit,
+}: AppDependencies): Express {
   const app = express();
+
+  // Behind Render's proxy every request comes from the proxy; trusting one hop
+  // makes req.ip the real client, so the submit limit counts per customer.
+  if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
 
   app.use(
     cors({
@@ -39,10 +59,14 @@ export function createExpressApp(
   const calculationController = new CalculationController(calculationUseCase);
   const productController = new ProductController(productUseCase);
   const orderQuoteController = new OrderQuoteController(orderQuoteUseCase);
+  const orderSubmitController = new OrderSubmitController(orderSubmitUseCase);
 
   app.use('/api/calculations', createCalculationRoutes(calculationController));
   app.use('/api/products', createProductRoutes(productController));
-  app.use('/api/orders', createOrderRoutes(orderQuoteController));
+  app.use(
+    '/api/orders',
+    createOrderRoutes(orderQuoteController, orderSubmitController, createRateLimit(submitRateLimit))
+  );
   app.use('/api/families', createFamilyRoutes(productController));
 
   app.use((req, res) => {

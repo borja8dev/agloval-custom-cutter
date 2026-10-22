@@ -4,6 +4,7 @@ import { createExpressApp } from '../../../src/infrastructure/config/express';
 import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
+import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
 import {
   FamilySummary,
   ProductRecord,
@@ -44,7 +45,12 @@ describe('Product and family endpoints', () => {
       countSearch: jest.fn().mockResolvedValue(9),
       listFamilies: jest.fn().mockResolvedValue(families),
     };
-    app = createExpressApp({} as ICalculateUseCase, productUseCase, {} as IOrderQuoteUseCase);
+    app = createExpressApp({
+      calculationUseCase: {} as ICalculateUseCase,
+      productUseCase,
+      orderQuoteUseCase: {} as IOrderQuoteUseCase,
+      orderSubmitUseCase: {} as IOrderSubmitUseCase,
+    });
   });
 
   describe('GET /api/families', () => {

@@ -4,6 +4,7 @@ import { createExpressApp } from '../../../src/infrastructure/config/express';
 import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
+import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
 import { CalculationResponseDTO } from '../../../src/application/dto/CalculationResponse';
 import {
   CalculationNotFoundException,
@@ -57,7 +58,12 @@ describe('CalculationController - Integration', () => {
       listFamilies: jest.fn().mockResolvedValue([]),
     };
 
-    app = createExpressApp(mockCalculationUseCase, mockProductUseCase, {} as IOrderQuoteUseCase);
+    app = createExpressApp({
+      calculationUseCase: mockCalculationUseCase,
+      productUseCase: mockProductUseCase,
+      orderQuoteUseCase: {} as IOrderQuoteUseCase,
+      orderSubmitUseCase: {} as IOrderSubmitUseCase,
+    });
   });
 
   describe('POST /api/calculations', () => {

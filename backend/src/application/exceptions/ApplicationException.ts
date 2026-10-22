@@ -63,3 +63,14 @@ export class InvalidCalculationStatusException extends DomainException {
     );
   }
 }
+
+/** The mail server refused or did not answer; the customer can retry later. */
+export class EmailDeliveryException extends DomainException {
+  constructor() {
+    super(
+      'No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.',
+      'EMAIL_DELIVERY_FAILED',
+      502
+    );
+  }
+}
