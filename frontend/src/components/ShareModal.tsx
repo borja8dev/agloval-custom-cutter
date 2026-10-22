@@ -30,14 +30,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ quote, onClose }) => {
     <Modal open onClose={onClose} title="Compartir presupuesto">
       <div className="space-y-3">
         <button
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="w-full bg-brand-dark text-white py-2 rounded-lg hover:brightness-90 transition-colors"
           onClick={() => shareViaWhatsApp(quote)}
         >
           Compartir por WhatsApp
         </button>
 
         <button
-          className="w-full bg-blue-400 text-white py-2 rounded-lg hover:bg-blue-500 transition-colors"
+          className="w-full bg-white border border-brand-dark text-brand-dark py-2 rounded-lg hover:bg-brand-light transition-colors"
           onClick={() => shareViaEmail(quote)}
         >
           Enviar por email

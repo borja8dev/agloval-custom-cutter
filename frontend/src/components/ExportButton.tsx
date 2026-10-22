@@ -58,7 +58,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ quote }) => {
       <div className="relative">
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+          className="bg-white border border-brand-dark text-brand-dark px-4 py-2 rounded-lg font-medium hover:bg-brand-light transition-colors text-sm flex items-center gap-2"
           title="Exportar o compartir"
         >
           Compartir
