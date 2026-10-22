@@ -50,4 +50,19 @@ describe('ExportButton', () => {
     await user.click(screen.getByText('Cerrar'));
     expect(screen.queryByRole('heading', { name: /compartir presupuesto/i })).not.toBeInTheDocument();
   });
+
+  test('shows the share options in an accessible dialog that closes with Escape', async () => {
+    const user = userEvent.setup();
+    render(<ExportButton quote={makeQuote()} />);
+
+    await user.click(screen.getByRole('button', { name: /compartir/i }));
+    await user.click(screen.getByRole('button', { name: /compartir presupuesto/i }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Compartir presupuesto' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
