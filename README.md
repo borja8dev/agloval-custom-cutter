@@ -1,6 +1,6 @@
-# Agloval Custom Cutting Calculator
+# Gestor de pedidos (Agloval)
 
-**Full-stack prototype for custom wood material cutting and pricing.**
+**Gestor de pedidos (Agloval): full-stack prototype for ordering custom-cut wood materials with automatic pricing.**
 
 A web solution that allows customers to purchase wood boards in custom dimensions instead of only standard sizes. The system calculates how much of the board is used and adjusts pricing automatically.
 

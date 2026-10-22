@@ -12,6 +12,7 @@ import { OrderSummary } from '../components/OrderSummary';
 import { OrderHistory } from '../components/OrderHistory';
 import { ExportButton } from '../components/ExportButton';
 import { Alert } from '../components/Alert';
+import { AppHeader } from '../components/AppHeader';
 import type { CatalogProduct, OrderHistoryEntry } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -94,17 +95,8 @@ export const CuttingCalculator: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-blue-600 text-white py-6 sm:py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
-            Calculadora de Corte Personalizado
-          </h1>
-          <p className="text-blue-100 text-sm sm:text-base">
-            Calcula tu pedido de tableros, unidades y barras
-          </p>
-        </div>
-      </div>
+    <>
+      <AppHeader />
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-6">
         <section aria-labelledby="block-products" className={cardClass}>
@@ -190,6 +182,6 @@ export const CuttingCalculator: React.FC = () => {
           />
         </section>
       </div>
-    </div>
+    </>
   );
 };

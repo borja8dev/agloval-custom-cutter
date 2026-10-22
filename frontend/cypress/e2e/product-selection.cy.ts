@@ -8,7 +8,7 @@ describe('Product selection', () => {
   })
 
   it('shows the four blocks in order', () => {
-    cy.contains('h1', 'Calculadora de Corte Personalizado').should('be.visible')
+    cy.contains('h1', 'Gestor de pedidos').should('be.visible')
     cy.get('h2').then(($headings) => {
       expect([...$headings].map((h) => h.textContent)).to.deep.equal([
         '1. Selecciona producto',
