@@ -46,7 +46,7 @@ export const ProductList: React.FC<ProductListProps> = ({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Nombre o referencia"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand"
         />
       </div>
 
@@ -76,8 +76,8 @@ export const ProductList: React.FC<ProductListProps> = ({
                 data-testid="product-item"
                 onClick={() => onSelect(product)}
                 onKeyDown={(e) => handleKeyDown(e, product)}
-                className={`p-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
-                  selected ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50'
+                className={`p-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand ${
+                  selected ? 'bg-brand-light border-l-4 border-brand' : 'hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -89,14 +89,14 @@ export const ProductList: React.FC<ProductListProps> = ({
                 <p className="text-xs text-gray-500">{product.sku}</p>
                 <div className="flex flex-wrap items-center justify-between gap-x-3 text-sm text-gray-700">
                   <span data-testid="product-measure">{measure}</span>
-                  <span data-testid="product-price" className="font-mono font-semibold text-green-700">
+                  <span data-testid="product-price" className="font-mono font-semibold text-brand-dark">
                     {formatProductPrice(product)}
                   </span>
                 </div>
                 {count > 0 && (
                   <span
                     data-testid="in-order-badge"
-                    className="inline-block mt-1 text-xs bg-green-100 text-green-800 rounded px-2 py-0.5"
+                    className="inline-block mt-1 text-xs bg-brand-light text-brand-dark font-medium rounded px-2 py-0.5"
                   >
                     {count} en el pedido
                   </span>

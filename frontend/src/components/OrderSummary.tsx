@@ -3,6 +3,7 @@ import type { OrderLine, OrderPiece, OrderQuote } from '../types';
 import { MAX_LINE_QUANTITY, MAX_PIECE_QUANTITY } from '../constants';
 import { isBoardLine } from '../utils/order';
 import { formatDecimal } from '../utils/formatters';
+import { useAnimatedNumber, useChangeHighlight } from '../hooks/useAnimatedNumber';
 import { Alert } from './Alert';
 import { QuoteGroupList } from './QuoteGroupList';
 
@@ -18,7 +19,16 @@ interface OrderSummaryProps {
   onConfirm: () => void;
   onClear: () => void;
   isConfirming?: boolean;
+  /** Number the order will get when confirmed; shown as "Pedido nº N". */
+  orderNumber?: number;
 }
+
+// Short colour cue when the total changes; amounts keep a readable contrast.
+const trendClass = {
+  up: 'bg-green-50 text-green-800',
+  down: 'bg-amber-50 text-amber-800',
+  none: 'text-gray-900',
+};
 
 const removeButtonClass = 'text-sm text-red-600 hover:text-red-800 font-medium';
 
@@ -62,7 +72,7 @@ const QuantityInput: React.FC<{
           commit();
         }
       }}
-      className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-20 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand"
     />
   );
 };
@@ -158,15 +168,22 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onConfirm,
   onClear,
   isConfirming = false,
+  orderNumber,
 }) => {
   const isEmpty = lines.length === 0;
   const canConfirm = !isEmpty && quote !== null && !isLoading && !isConfirming;
-  const totalText = quote ? `${formatDecimal(quote.total)} EUR` : isEmpty ? '0,00 EUR' : '--';
+  const hasTotal = quote !== null || isEmpty;
+  const totalValue = quote ? quote.total : 0;
+  const animatedTotal = useAnimatedNumber(totalValue);
+  const trend = useChangeHighlight(totalValue);
+  const totalText = hasTotal ? `${formatDecimal(totalValue)} EUR` : '--';
+  const displayedText = hasTotal ? `${formatDecimal(animatedTotal)} EUR` : '--';
+  const title = orderNumber === undefined ? 'Pedido' : `Pedido nº ${orderNumber}`;
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-md flex flex-col">
+    <div className="w-full bg-white rounded-lg shadow-md flex flex-col lg:flex-1 lg:min-h-0">
       <div className="p-4 pb-2 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Pedido</h3>
+        <h3 className="text-lg font-bold text-brand-dark">{title}</h3>
         <p aria-live="polite" className="text-xs text-gray-500">
           {isLoading ? 'Calculando...' : ''}
         </p>
@@ -178,7 +195,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
       )}
 
-      <div data-testid="order-lines" className="max-h-96 overflow-y-auto px-4 space-y-3">
+      <div
+        data-testid="order-lines"
+        className="max-h-96 overflow-y-auto px-4 space-y-3 lg:max-h-none lg:flex-1 lg:min-h-0"
+      >
         {isEmpty ? (
           <div className="text-center text-gray-600 py-6">
             <p className="font-medium">El pedido está vacío</p>
@@ -200,15 +220,23 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       </div>
 
       <div className="shrink-0 sticky bottom-0 bg-white border-t border-gray-200 rounded-b-lg p-4 space-y-3">
-        <p data-testid="order-total" className="text-xl font-bold text-gray-900">
-          Total: {totalText}
+        <p
+          data-testid="order-total"
+          aria-hidden="true"
+          data-trend={trend ?? undefined}
+          className={`text-xl font-bold rounded-md -mx-2 px-2 py-0.5 tabular-nums transition-colors duration-500 ${trendClass[trend ?? 'none']}`}
+        >
+          Total: {displayedText}
+        </p>
+        <p data-testid="order-total-live" aria-live="polite" className="sr-only">
+          Total del pedido: {totalText}
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="flex-1 bg-green-600 text-white py-2 rounded-md font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 bg-brand-dark text-white py-2 rounded-md font-medium hover:brightness-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
             {isConfirming ? 'Confirmando...' : 'Confirmar pedido'}
           </button>

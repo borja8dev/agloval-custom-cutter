@@ -24,7 +24,7 @@ export const FamilySelect: React.FC<FamilySelectProps> = ({
       value={value}
       disabled={isLoading}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-brand disabled:bg-gray-100"
     >
       <option value="">Todas las familias</option>
       {families

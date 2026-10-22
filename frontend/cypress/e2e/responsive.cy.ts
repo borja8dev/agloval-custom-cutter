@@ -25,7 +25,15 @@ const expectScrollContainer = (selector: string) => {
   })
 }
 
-const expectMinHeight = (button: JQuery<HTMLElement>, min: number) => {
+const expectInViewport = (selector: string) => {
+  cy.get(selector).should(($el) => {
+    const rect = $el[0].getBoundingClientRect()
+    expect(rect.top, `${selector} top`).to.be.at.least(0)
+    expect(rect.bottom, `${selector} bottom`).to.be.at.most($el[0].ownerDocument.defaultView!.innerHeight)
+  })
+}
+
+const expectMinHeight =(button: JQuery<HTMLElement>, min: number) => {
   expect(button[0].getBoundingClientRect().height).to.be.at.least(min)
 }
 
@@ -78,11 +86,7 @@ describe('Responsive layout', () => {
         })
 
         cy.contains('h2', '3. Pedido actual').scrollIntoView()
-        cy.get('[data-testid="order-total"]').should(($total) => {
-          const rect = $total[0].getBoundingClientRect()
-          expect(rect.top, 'total top').to.be.at.least(0)
-          expect(rect.bottom, 'total bottom').to.be.at.most($total[0].ownerDocument.defaultView!.innerHeight)
-        })
+        expectInViewport('[data-testid="order-total"]')
         cy.contains('button', 'Confirmar pedido').should('be.visible')
 
         // Several saved orders make the history overflow its own container.
@@ -101,6 +105,50 @@ describe('Responsive layout', () => {
         })
         expectNoHorizontalScroll()
       })
+
+      if (width >= 1024) {
+        it('keeps the order panel, its number and its total in view while scrolling', () => {
+          cy.get('aside').contains('h3', 'Pedido nº 1')
+          cy.get('aside').should('have.css', 'position', 'sticky')
+          cy.pickProduct(SUPERPAN)
+          cy.addBoardPiece(100, 80, 2)
+          cy.get('[data-testid="order-total"]').should('not.contain', '--')
+          cy.get('[data-testid="order-bar"]').should('not.be.visible')
+
+          // Back to the full catalog so both the list and the page can scroll.
+          cy.get('[data-testid="product-search"]').clear()
+          cy.wait('@products')
+          cy.get('[data-testid="product-list"]').scrollTo('bottom')
+          cy.scrollTo('bottom')
+          cy.window().its('scrollY').should('be.greaterThan', 0)
+          expectInViewport('[data-testid="order-total"]')
+          expectInViewport('aside h3')
+          expectNoHorizontalScroll()
+        })
+      } else {
+        it('shows a bottom order bar that leads to the order', () => {
+          cy.get('[data-testid="order-bar"]').should('not.exist')
+          cy.pickProduct(SUPERPAN)
+          cy.addBoardPiece(100, 80, 2)
+          cy.get('[data-testid="order-total"]')
+            .should('not.contain', '--')
+            .invoke('text')
+            .then((text) => {
+              cy.get('[data-testid="order-bar"]')
+                .should('be.visible')
+                .and('contain', 'Pedido nº 1')
+                .and('contain', '1 línea')
+                .and('contain', text.replace('Total: ', ''))
+            })
+          expectInViewport('[data-testid="order-bar"]')
+
+          cy.scrollTo('top')
+          cy.get('[data-testid="order-bar"]').contains('button', 'Ver pedido').click()
+          expectInViewport('#block-order')
+          cy.focused().should('have.id', 'block-order')
+          expectNoHorizontalScroll()
+        })
+      }
     })
   })
 })

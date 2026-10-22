@@ -21,9 +21,9 @@ const alertStyles = {
     icon: '✕'
   },
   info: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-800',
+    bg: 'bg-brand-light',
+    border: 'border-brand',
+    text: 'text-brand-dark',
     icon: 'ℹ'
   },
   warning: {

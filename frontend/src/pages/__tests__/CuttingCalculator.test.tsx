@@ -8,20 +8,30 @@ vi.mock('../../services/api', () => ({
   searchCatalogProducts: vi.fn(),
   quoteOrder: vi.fn(),
   getProduct: vi.fn(),
-  getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback)
+  getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
 }));
 
-import { getFamilies, getProduct, listProducts, quoteOrder, searchCatalogProducts } from '../../services/api';
+import {
+  getFamilies,
+  getProduct,
+  listProducts,
+  quoteOrder,
+  searchCatalogProducts,
+} from '../../services/api';
 import { CuttingCalculator } from '../CuttingCalculator';
 import { makeQuote, m2Product, mlProduct, udProduct } from '../../test/fixtures';
 import type { CatalogProduct, Family, ProductListParams } from '../../types';
 
 const families: Family[] = [
   { code: 'MEL', name: 'Melamina', productCount: 1, units: { UD: 0, M2: 1, ML: 0 } },
-  { code: 'FER', name: 'Ferreteria', productCount: 1, units: { UD: 1, M2: 0, ML: 0 } }
+  { code: 'FER', name: 'Ferreteria', productCount: 1, units: { UD: 1, M2: 0, ML: 0 } },
 ];
 
-const page = (products: CatalogProduct[]) => ({ products, count: products.length, total: products.length });
+const page = (products: CatalogProduct[]) => ({
+  products,
+  count: products.length,
+  total: products.length,
+});
 
 const mockedQuote = vi.mocked(quoteOrder);
 
@@ -90,7 +100,11 @@ describe('CuttingCalculator page', () => {
     const titles = screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent);
     expect(titles).toEqual(['Gestor de pedidos']);
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['1. Selecciona producto', '2. Medidas y cantidad', '3. Pedido actual']);
+    expect(headings).toEqual([
+      '1. Selecciona producto',
+      '2. Medidas y cantidad',
+      '3. Pedido actual',
+    ]);
     expect(screen.getAllByRole('region')).toHaveLength(3);
     const historyButton = screen.getByRole('button', { name: 'Historial (0)' });
     expect(historyButton).toHaveAttribute('aria-haspopup', 'dialog');
@@ -123,7 +137,9 @@ describe('CuttingCalculator page', () => {
 
     await user.clear(screen.getByTestId('product-search'));
     await waitFor(() =>
-      expect(within(screen.getByTestId('product-list')).getByText(m2Product.name)).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('product-list')).getByText(m2Product.name)
+      ).toBeInTheDocument()
     );
   });
 
@@ -138,8 +154,8 @@ describe('CuttingCalculator page', () => {
         {
           lines: [
             { productId: m2Product.id, pieces: [{ width: 100, height: 80, quantity: 20 }] },
-            { productId: udProduct.id, quantity: 12 }
-          ]
+            { productId: udProduct.id, quantity: 12 },
+          ],
         },
         expect.anything()
       )
@@ -223,6 +239,49 @@ describe('CuttingCalculator page', () => {
     await screen.findByText('Pedido #1 guardado');
 
     expect(document.body.textContent).not.toMatch(/desperdicio|aprovechamiento|utilizaci/i);
+  });
+
+  test('keeps the current order in a complementary panel', async () => {
+    await renderPage();
+    const panel = screen.getByRole('complementary', { name: '3. Pedido actual' });
+    expect(panel).toContainElement(screen.getByRole('region', { name: '3. Pedido actual' }));
+    expect(panel).toContainElement(screen.getByTestId('order-total'));
+  });
+
+  test('shows the number of the order being built and moves to the next one after confirming', async () => {
+    const user = await renderPage();
+    const block = () => within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    expect(block().getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 1');
+
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+    await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    await screen.findByText('Pedido #1 guardado');
+
+    expect(block().getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 2');
+  });
+
+  test('shows a bottom order bar only while the order has lines', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const user = await renderPage();
+    expect(screen.queryByTestId('order-bar')).not.toBeInTheDocument();
+
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+    const bar = screen.getByTestId('order-bar');
+    expect(bar).toHaveTextContent('Pedido nº 1 · 1 línea · 123,45 EUR');
+
+    await addUnitLine(user);
+    await waitFor(() => expect(bar).toHaveTextContent('2 líneas'));
+
+    await user.click(within(bar).getByRole('button', { name: 'Ver pedido' }));
+    const heading = screen.getByRole('heading', { level: 2, name: '3. Pedido actual' });
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(heading).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: 'Vaciar pedido' }));
+    await waitFor(() => expect(screen.queryByTestId('order-bar')).not.toBeInTheDocument());
   });
 
   test('surfaces a families loading error in an alert', async () => {

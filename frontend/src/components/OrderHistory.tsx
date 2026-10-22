@@ -41,7 +41,7 @@ const HistoryRow: React.FC<{
           <span className="block font-semibold text-gray-900">Pedido #{entry.number}</span>
           <span className="block text-xs text-gray-500">{formatDate(entry.createdAt)}</span>
         </span>
-        <span className="font-bold text-green-600 shrink-0">
+        <span className="font-bold text-brand-dark shrink-0">
           {formatDecimal(entry.total)} {entry.currency}
         </span>
       </button>
@@ -57,7 +57,7 @@ const HistoryRow: React.FC<{
           type="button"
           onClick={() => onReorder(entry)}
           disabled={isReordering}
-          className="flex-1 bg-blue-600 text-white py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="flex-1 bg-brand-dark text-white py-1.5 rounded-md text-sm font-medium hover:brightness-90 disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           Volver a pedir
         </button>

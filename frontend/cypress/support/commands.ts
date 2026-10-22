@@ -31,7 +31,26 @@ Cypress.Commands.add('visitCalculator', () => {
   cy.intercept('GET', '**/api/families*').as('families')
   cy.intercept({ method: 'GET', pathname: /^\/api\/products(\/search)?$/ }).as('products')
   cy.clearLocalStorage()
-  cy.visit('/')
+  // Reduced motion makes the animated total jump to its value, so text reads are exact.
+  cy.visit('/', {
+    onBeforeLoad(win) {
+      const original = win.matchMedia.bind(win)
+      cy.stub(win, 'matchMedia').callsFake((query: string) =>
+        query.includes('prefers-reduced-motion')
+          ? {
+              matches: query.includes('reduce'),
+              media: query,
+              onchange: null,
+              addListener: () => undefined,
+              removeListener: () => undefined,
+              addEventListener: () => undefined,
+              removeEventListener: () => undefined,
+              dispatchEvent: () => false,
+            }
+          : original(query)
+      )
+    },
+  })
   cy.wait('@families')
   cy.wait('@products')
 })

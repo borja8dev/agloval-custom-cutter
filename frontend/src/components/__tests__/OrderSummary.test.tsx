@@ -91,6 +91,59 @@ describe('OrderSummary', () => {
     expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
   });
 
+  test('titles the order with its number when given one', () => {
+    setup({ orderNumber: 7 });
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 7');
+  });
+
+  test('keeps the plain "Pedido" title without a number', () => {
+    setup();
+    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(/^Pedido$/);
+  });
+
+  test('exposes the exact total to assistive technology through a polite live text', () => {
+    setup();
+    const live = screen.getByTestId('order-total-live');
+    expect(live).toHaveTextContent(/^Total del pedido: 96,48 EUR$/);
+    expect(live).toHaveAttribute('aria-live', 'polite');
+    expect(live).toHaveClass('sr-only');
+    expect(screen.getByTestId('order-total')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('highlights the total when it goes up or down', () => {
+    const { rerender } = render(
+      <OrderSummary
+        lines={sampleLines}
+        quote={makeQuote({ total: 10 })}
+        onUpdatePiece={vi.fn()}
+        onRemovePiece={vi.fn()}
+        onUpdateQuantity={vi.fn()}
+        onRemoveLine={vi.fn()}
+        onConfirm={vi.fn()}
+        onClear={vi.fn()}
+      />
+    );
+    const total = screen.getByTestId('order-total');
+    expect(total).not.toHaveAttribute('data-trend');
+    const next = (value: number) => (
+      <OrderSummary
+        lines={sampleLines}
+        quote={makeQuote({ total: value })}
+        onUpdatePiece={vi.fn()}
+        onRemovePiece={vi.fn()}
+        onUpdateQuantity={vi.fn()}
+        onRemoveLine={vi.fn()}
+        onConfirm={vi.fn()}
+        onClear={vi.fn()}
+      />
+    );
+    rerender(next(20));
+    expect(total).toHaveAttribute('data-trend', 'up');
+    expect(total).toHaveTextContent('Total: 20,00 EUR');
+    rerender(next(5));
+    expect(total).toHaveAttribute('data-trend', 'down');
+  });
+
   test('keeps the total bar outside the scrolling lines container', () => {
     const many: OrderLine[] = Array.from({ length: 30 }, (_, i) => ({
       id: `line${i}`,
