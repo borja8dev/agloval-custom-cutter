@@ -31,6 +31,19 @@ Both platforms auto-deploy on push to `main` once the project is connected throu
    ```
    Render injects `PORT` itself — the app already reads `process.env.PORT` (see `backend/src/server.ts`), no need to set it manually.
    Note: no `JWT_SECRET` — there's no auth in this codebase yet (see Known Limitations in the root README), so don't invent one.
+
+   Order emails (`POST /api/orders/submit`), all optional and set by hand in the dashboard (`sync: false` in `render.yaml`):
+
+   | Variable | Default | Purpose |
+   |----------|---------|---------|
+   | `SMTP_HOST` | unset | SMTP server. Unset: emails are not sent, only logged (recipient domain and subject). |
+   | `SMTP_PORT` | `1025` | SMTP port (usually `587`, or `465` with `SMTP_SECURE=true`). |
+   | `SMTP_SECURE` | not `true` | `true` for TLS from the start (port 465); anything else uses STARTTLS when offered. |
+   | `SMTP_USER` / `SMTP_PASS` | unset | SMTP credentials; used only when both are set. |
+   | `MAIL_FROM` | `Agloval · Gestor de pedidos <no-reply@agloval.test>` | Sender. Use an address on a domain the SMTP provider is allowed to send for. |
+   | `ORDER_NOTIFICATION_EMAIL` | unset | Where Agloval receives new orders. |
+
+   **Leave `ORDER_NOTIFICATION_EMAIL` unset until Agloval decides which address should receive orders.** While it is unset, only the customer gets an email and the response reports `"agloval": "skipped"`. In production `NODE_ENV=production` also makes Express trust one proxy hop, so the per-IP submission limit sees the real client IP behind Render's proxy.
 7. Add a Render Postgres database (**New → PostgreSQL**), copy its **Internal Database URL** into `DATABASE_URL` above.
 8. Run the initial migration once the service and database both exist. Render's one-off **Shell** (from the service page) or a **Pre-Deploy Command** both work:
    ```bash

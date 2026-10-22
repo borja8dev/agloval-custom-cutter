@@ -4,6 +4,7 @@ import { createExpressApp } from '../../../src/infrastructure/config/express';
 import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
+import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
 import { OrderQuoteResponseDTO } from '../../../src/application/dto/OrderQuote';
 import {
   InvalidOrderLineException,
@@ -73,7 +74,12 @@ describe('OrderQuoteController - Integration', () => {
 
   beforeEach(() => {
     orderQuoteUseCase = { quote: jest.fn().mockResolvedValue(mixedResponse) };
-    app = createExpressApp({} as ICalculateUseCase, {} as IProductUseCase, orderQuoteUseCase);
+    app = createExpressApp({
+      calculationUseCase: {} as ICalculateUseCase,
+      productUseCase: {} as IProductUseCase,
+      orderQuoteUseCase,
+      orderSubmitUseCase: {} as IOrderSubmitUseCase,
+    });
   });
 
   const mixedBody = {

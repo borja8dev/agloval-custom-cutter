@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { createExpressApp } from './infrastructure/config/express';
 import { CalculationApplicationService } from './application/services/CalculationApplicationService';
 import { QuoteOrderService } from './application/services/QuoteOrderService';
+import { SubmitOrderService } from './application/services/SubmitOrderService';
+import { createOrderNotifier } from './infrastructure/mail/createOrderNotifier';
 import { ProductUseCaseAdapter } from './application/services/ProductUseCaseAdapter';
 import { ProductRepository } from './infrastructure/persistence/repositories/ProductRepository';
 import { CalculationRepository } from './infrastructure/persistence/repositories/CalculationRepository';
@@ -28,7 +30,19 @@ async function main(): Promise<void> {
 
   const orderQuoteService = new QuoteOrderService(productRepository);
 
-  const app = createExpressApp(calculationService, productUseCase, orderQuoteService);
+  // No ORDER_NOTIFICATION_EMAIL means Agloval receives nothing; without SMTP_HOST
+  // emails are only logged. In development SMTP_HOST points at Mailpit.
+  const orderNotifier = createOrderNotifier(process.env);
+  const orderSubmitService = new SubmitOrderService(orderQuoteService, orderNotifier, {
+    aglovalEmail: process.env.ORDER_NOTIFICATION_EMAIL,
+  });
+
+  const app = createExpressApp({
+    calculationUseCase: calculationService,
+    productUseCase,
+    orderQuoteUseCase: orderQuoteService,
+    orderSubmitUseCase: orderSubmitService,
+  });
 
   const PORT = process.env.PORT || 5000;
   const server = app.listen(PORT, () => {

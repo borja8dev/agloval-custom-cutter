@@ -74,6 +74,9 @@ cd frontend && npm install && cd ..
 
 # 3. Start PostgreSQL (Docker)
 docker-compose up -d
+# Order emails go to Mailpit (inbox at http://localhost:8025): `docker compose up -d mailpit`,
+# then set SMTP_HOST=localhost and SMTP_PORT=1025 in backend/.env. Leave ORDER_NOTIFICATION_EMAIL
+# unset so nothing is sent to Agloval (all variables: docs/DEPLOYMENT.md)
 
 # 4. Setup database (migrations + seeding)
 cd backend

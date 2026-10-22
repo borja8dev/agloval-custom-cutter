@@ -15,7 +15,7 @@ const OrderPieceSchema = PieceSchema.extend({
  * Shape only: whether a line needs `pieces` or `quantity` depends on the
  * product's unit and is checked by the use case once the product is loaded.
  */
-const OrderLineSchema = z
+export const OrderLineSchema = z
   .object({
     productId: z.cuid(),
     pieces: z
