@@ -11,7 +11,6 @@ const HEADINGS = [
   '1. Selecciona producto',
   '2. Medidas y cantidad',
   '3. Pedido actual',
-  '4. Historial',
 ]
 
 const expectNoHorizontalScroll = () => {
@@ -38,7 +37,7 @@ describe('Responsive layout', () => {
         cy.visitCalculator()
       })
 
-      it('has no horizontal scroll and shows the four blocks', () => {
+      it('has no horizontal scroll and shows the three blocks', () => {
         expectNoHorizontalScroll()
         HEADINGS.forEach((heading) => {
           cy.contains('h2', heading).scrollIntoView().should('be.visible')
@@ -64,7 +63,7 @@ describe('Responsive layout', () => {
         cy.get('[data-testid="add-line-btn"]').should(($btn) => expectMinHeight($btn, 40))
       })
 
-      it('keeps the total visible with a long order and scrolls the order and history blocks', () => {
+      it('keeps the total visible with a long order and scrolls the order and the history window', () => {
         cy.pickProduct(SUPERPAN)
         for (let i = 0; i < 8; i++) {
           cy.addBoardPiece(20 + i * 10, 30 + i * 5, 2)
@@ -88,12 +87,14 @@ describe('Responsive layout', () => {
 
         // Several saved orders make the history overflow its own container.
         cy.contains('button', 'Confirmar pedido').click()
-        cy.get('[data-testid="history-entry"]').should('have.length', 1)
+        cy.contains('header button', 'Historial (1)').should('exist')
         for (let i = 0; i < 6; i++) {
           cy.addQuantity(i + 1)
           cy.contains('button', 'Confirmar pedido').click()
-          cy.get('[data-testid="history-entry"]').should('have.length', i + 2)
+          cy.contains('header button', `Historial (${i + 2})`).should('exist')
         }
+        cy.openHistory()
+        cy.get('[data-testid="history-entry"]').should('have.length', 7)
         expectScrollContainer('[data-testid="order-history"]')
         cy.get('[data-testid="order-history"]').should(($el) => {
           expect($el[0].scrollHeight).to.be.greaterThan($el[0].clientHeight)

@@ -68,6 +68,11 @@ async function addUnitLine(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByTestId('add-line-btn'));
 }
 
+async function openHistory(user: ReturnType<typeof userEvent.setup>, count: number) {
+  await user.click(screen.getByRole('button', { name: `Historial (${count})` }));
+  return screen.getByRole('dialog', { name: 'Historial de pedidos' });
+}
+
 describe('CuttingCalculator page', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -79,20 +84,18 @@ describe('CuttingCalculator page', () => {
     resetMocks();
   });
 
-  test('shows the four blocks in order with their headings', async () => {
+  test('shows the three blocks in order with their headings and a history button', async () => {
     await renderPage();
 
     const titles = screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent);
     expect(titles).toEqual(['Gestor de pedidos']);
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual([
-      '1. Selecciona producto',
-      '2. Medidas y cantidad',
-      '3. Pedido actual',
-      '4. Historial'
-    ]);
-    expect(screen.getAllByRole('region')).toHaveLength(4);
-    expect(screen.queryByRole('button', { name: /historial \(/i })).not.toBeInTheDocument();
+    expect(headings).toEqual(['1. Selecciona producto', '2. Medidas y cantidad', '3. Pedido actual']);
+    expect(screen.getAllByRole('region')).toHaveLength(3);
+    const historyButton = screen.getByRole('button', { name: 'Historial (0)' });
+    expect(historyButton).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(screen.getByRole('banner')).toContainElement(historyButton);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   test('choosing a family refetches the products with that family', async () => {
@@ -154,7 +157,7 @@ describe('CuttingCalculator page', () => {
     expect(block).toContainElement(screen.getByTestId('order-total'));
   });
 
-  test('confirming saves Pedido #1, clears the order and lists it in the history', async () => {
+  test('confirming saves Pedido #1, clears the order and lists it in the history window', async () => {
     const user = await renderPage();
     await addBoardPiece(user);
     await screen.findByText(/Total: 123,45 EUR/);
@@ -163,13 +166,15 @@ describe('CuttingCalculator page', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Pedido #1 guardado');
     await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
-    const history = within(screen.getByRole('region', { name: '4. Historial' }));
-    const entries = history.getAllByTestId('history-entry');
+
+    const dialog = await openHistory(user, 1);
+    const entries = within(dialog).getAllByTestId('history-entry');
     expect(entries).toHaveLength(1);
     expect(entries[0]).toHaveTextContent('Pedido #1');
+    expect(within(dialog).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
   });
 
-  test('"Volver a pedir" reloads the lines of a past order', async () => {
+  test('"Volver a pedir" closes the history window and reloads the lines of a past order', async () => {
     const user = await renderPage();
     await addBoardPiece(user);
     await addUnitLine(user);
@@ -177,9 +182,14 @@ describe('CuttingCalculator page', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
     await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
 
-    await user.click(screen.getByRole('button', { name: 'Volver a pedir' }));
+    const dialog = await openHistory(user, 1);
+    await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
 
-    expect(await screen.findByText('Pedido #1 cargado en el pedido actual')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    expect(await block.findByRole('status')).toHaveTextContent(
+      'Pedido #1 cargado en el pedido actual'
+    );
     expect(screen.getAllByTestId('order-line')).toHaveLength(2);
   });
 
@@ -195,10 +205,13 @@ describe('CuttingCalculator page', () => {
       throw new Error('Product not found');
     });
 
-    await user.click(screen.getByRole('button', { name: 'Volver a pedir' }));
+    const dialog = await openHistory(user, 1);
+    await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
 
-    const warning = await screen.findByText(new RegExp(`ya no existen.*${udProduct.name}`, 'i'));
-    expect(warning).toBeInTheDocument();
+    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const warning = await block.findByText(new RegExp(`ya no existen.*${udProduct.name}`, 'i'));
+    expect(warning.closest('[role="status"]')).not.toBeNull();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('order-line')).toHaveLength(1);
   });
 

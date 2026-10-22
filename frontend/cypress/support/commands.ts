@@ -18,6 +18,10 @@ declare global {
       addQuantity(quantity: number): Chainable<void>
       /** Yields the order total in integer cents. */
       orderTotal(): Chainable<number>
+      /** Opens the history window from the header and yields the dialog. */
+      openHistory(): Chainable<JQuery<HTMLElement>>
+      /** Closes the history window with its close button. */
+      closeHistory(): Chainable<void>
     }
   }
 }
@@ -82,5 +86,15 @@ Cypress.Commands.add('orderTotal', () =>
     .invoke('text')
     .then((text) => parseCents(text))
 )
+
+Cypress.Commands.add('openHistory', () => {
+  cy.contains('header button[aria-haspopup="dialog"]', /^Historial \(\d+\)$/).click()
+  return cy.get('[role="dialog"][aria-labelledby]').should('be.visible').and('contain', 'Historial de pedidos')
+})
+
+Cypress.Commands.add('closeHistory', () => {
+  cy.get('[role="dialog"]').find('button[aria-label="Cerrar"]').click()
+  cy.get('[role="dialog"]').should('not.exist')
+})
 
 export {}

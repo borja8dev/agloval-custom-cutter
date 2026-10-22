@@ -10,6 +10,8 @@ interface OrderHistoryProps {
   onClear: () => void;
   status?: { kind: 'success' | 'warning'; message: string } | null;
   isReordering?: boolean;
+  /** Hides the own title when the container (for example a dialog) already shows one. */
+  hideTitle?: boolean;
 }
 
 const statusStyles = {
@@ -79,13 +81,16 @@ export const OrderHistory: React.FC<OrderHistoryProps> = ({
   onClear,
   status = null,
   isReordering = false,
+  hideTitle = false,
 }) => {
   const [confirmingClear, setConfirmingClear] = useState(false);
 
   return (
     <div className="w-full bg-white rounded-lg shadow-md p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold text-gray-900">Historial de pedidos</h3>
+      <div className={`flex items-center gap-2 ${hideTitle ? 'justify-end' : 'justify-between'}`}>
+        {!hideTitle && (
+          <h3 className="text-lg font-semibold text-gray-900">Historial de pedidos</h3>
+        )}
         {history.length > 0 &&
           (confirmingClear ? (
             <div className="flex gap-2">
