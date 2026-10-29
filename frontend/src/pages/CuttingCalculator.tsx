@@ -175,7 +175,7 @@ export const CuttingCalculator: React.FC = () => {
         <div className="min-w-0 space-y-6">
           <section aria-labelledby="block-products" className={cardClass}>
             <h2 id="block-products" className={headingClass}>
-              1. Selecciona producto
+              Selecciona producto
             </h2>
             <div className="space-y-4">
               {familiesError && <Alert type="error" message={familiesError} />}
@@ -201,7 +201,7 @@ export const CuttingCalculator: React.FC = () => {
 
           <section aria-labelledby="block-line" className={cardClass}>
             <h2 id="block-line" className={headingClass}>
-              2. Medidas y cantidad
+              Medidas y cantidad
             </h2>
             <OrderLineForm
               product={selectedProduct}
@@ -227,7 +227,7 @@ export const CuttingCalculator: React.FC = () => {
               tabIndex={-1}
               className={`${headingClass} scroll-mt-4 focus:outline-none`}
             >
-              3. Pedido actual
+              Pedido actual
             </h2>
             <div className="space-y-3 lg:flex lg:flex-col lg:min-h-0 lg:flex-1">
               <div role="status" aria-live="polite">

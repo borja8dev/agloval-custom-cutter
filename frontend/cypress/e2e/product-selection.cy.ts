@@ -11,9 +11,9 @@ describe('Product selection', () => {
     cy.contains('h1', 'Gestor de pedidos').should('be.visible')
     cy.get('h2').then(($headings) => {
       expect([...$headings].map((h) => h.textContent)).to.deep.equal([
-        '1. Selecciona producto',
-        '2. Medidas y cantidad',
-        '3. Pedido actual',
+        'Selecciona producto',
+        'Medidas y cantidad',
+        'Pedido actual',
       ])
     })
     cy.get('section[aria-labelledby="block-products"]').should('exist')

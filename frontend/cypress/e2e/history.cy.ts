@@ -82,7 +82,7 @@ describe('Order history', () => {
       cy.wait('@quote')
 
       cy.get('[role="dialog"]').should('not.exist')
-      cy.contains('section', '3. Pedido actual')
+      cy.contains('section', 'Pedido actual')
         .find('[role="status"]')
         .should('be.visible')
         .and('contain', 'Pedido #1 cargado en el pedido actual')

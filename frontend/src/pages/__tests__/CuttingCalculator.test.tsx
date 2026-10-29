@@ -135,9 +135,9 @@ describe('CuttingCalculator page', () => {
     expect(titles).toEqual(['Gestor de pedidos']);
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual([
-      '1. Selecciona producto',
-      '2. Medidas y cantidad',
-      '3. Pedido actual',
+      'Selecciona producto',
+      'Medidas y cantidad',
+      'Pedido actual',
     ]);
     expect(screen.getAllByRole('region')).toHaveLength(3);
     const historyButton = screen.getByRole('button', { name: 'Historial (0)' });
@@ -202,7 +202,7 @@ describe('CuttingCalculator page', () => {
     await addBoardPiece(user);
 
     const total = await screen.findByText(/Total: 123,45 EUR/);
-    const block = screen.getByRole('region', { name: '3. Pedido actual' });
+    const block = screen.getByRole('region', { name: 'Pedido actual' });
     expect(block).toContainElement(total);
     expect(block).toContainElement(screen.getByTestId('order-total'));
   });
@@ -237,7 +237,7 @@ describe('CuttingCalculator page', () => {
       privacyAccepted: true,
       lines: [{ productId: m2Product.id, pieces: [{ width: 100, height: 80, quantity: 20 }] }],
     });
-    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
     expect(block.getByRole('status')).toHaveTextContent(sentMessage(1));
     expect(screen.queryAllByTestId('order-line')).toHaveLength(0);
     const banner = within(screen.getByRole('banner'));
@@ -349,7 +349,7 @@ describe('CuttingCalculator page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
     expect(await block.findByRole('status')).toHaveTextContent(
       'Pedido #1 cargado en el pedido actual'
     );
@@ -371,7 +371,7 @@ describe('CuttingCalculator page', () => {
     const dialog = await openHistory(user, 1);
     await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
 
-    const block = within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
     const warning = await block.findByText(new RegExp(`ya no existen.*${udProduct.name}`, 'i'));
     expect(warning.closest('[role="status"]')).not.toBeNull();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -390,14 +390,14 @@ describe('CuttingCalculator page', () => {
 
   test('keeps the current order in a complementary panel', async () => {
     await renderPage();
-    const panel = screen.getByRole('complementary', { name: '3. Pedido actual' });
-    expect(panel).toContainElement(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const panel = screen.getByRole('complementary', { name: 'Pedido actual' });
+    expect(panel).toContainElement(screen.getByRole('region', { name: 'Pedido actual' }));
     expect(panel).toContainElement(screen.getByTestId('order-total'));
   });
 
   test('shows the number of the order being built and moves to the next one after confirming', async () => {
     const user = await renderPage();
-    const block = () => within(screen.getByRole('region', { name: '3. Pedido actual' }));
+    const block = () => within(screen.getByRole('region', { name: 'Pedido actual' }));
     expect(block().getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 1');
 
     await addBoardPiece(user);
@@ -423,7 +423,7 @@ describe('CuttingCalculator page', () => {
     await waitFor(() => expect(bar).toHaveTextContent('2 líneas'));
 
     await user.click(within(bar).getByRole('button', { name: 'Ver pedido' }));
-    const heading = screen.getByRole('heading', { level: 2, name: '3. Pedido actual' });
+    const heading = screen.getByRole('heading', { level: 2, name: 'Pedido actual' });
     expect(scrollIntoView).toHaveBeenCalled();
     expect(heading).toHaveFocus();
 

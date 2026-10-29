@@ -8,9 +8,9 @@ const VIEWPORTS = [
 ] as const
 
 const HEADINGS = [
-  '1. Selecciona producto',
-  '2. Medidas y cantidad',
-  '3. Pedido actual',
+  'Selecciona producto',
+  'Medidas y cantidad',
+  'Pedido actual',
 ]
 
 const expectNoHorizontalScroll = () => {
@@ -85,7 +85,7 @@ describe('Responsive layout', () => {
           expect($el[0].scrollHeight).to.be.greaterThan($el[0].clientHeight)
         })
 
-        cy.contains('h2', '3. Pedido actual').scrollIntoView()
+        cy.contains('h2', 'Pedido actual').scrollIntoView()
         expectInViewport('[data-testid="order-total"]')
         cy.contains('button', 'Confirmar pedido').should('be.visible')
 

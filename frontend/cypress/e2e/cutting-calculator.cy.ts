@@ -84,7 +84,7 @@ describe('Cutting calculator', () => {
     cy.pickProduct(SCREW)
     listedPriceCents(SCREW).then((unitPrice) => {
       cy.addQuantity(3)
-      cy.get('[data-testid="quote-group"]').contains(SCREW).parent().as('screwGroup')
+      cy.contains('[data-testid="order-line"]', SCREW).find('[data-testid="quote-group"]').as('screwGroup')
       cy.get('@screwGroup').should('contain', `3 x ${formatCents(unitPrice)} EUR`)
       cy.get('@screwGroup').should('contain', `= ${formatCents(unitPrice * 3)} EUR`)
     })
@@ -93,7 +93,7 @@ describe('Cutting calculator', () => {
 
     cy.get('[data-testid="order-line"]').should('have.length', 3)
     cy.get('[data-testid="quote-group"]').should('have.length', 3)
-    cy.get('[data-testid="quote-group"]').contains(BAR).parent().should('contain', '2 barras de 3,90 m')
+    cy.contains('[data-testid="order-line"]', BAR).find('[data-testid="quote-group"]').should('contain', '2 barras de 3,90 m')
     cy.get('[data-testid="quote-group"]').then(($groups) => {
       cy.get('[data-testid="order-total"]').should('have.text', totalText(sumOfGroupPrices($groups)))
     })
@@ -176,7 +176,7 @@ describe('Cutting calculator', () => {
     cy.get(`input[aria-label="Cantidad de ${SCREW}"]`).clear()
     cy.get(`input[aria-label="Cantidad de ${SCREW}"]`).type('5{enter}')
     cy.wait('@quote')
-    cy.get('[data-testid="quote-group"]').contains(SCREW).parent().should('contain', '5 x')
+    cy.contains('[data-testid="order-line"]', SCREW).find('[data-testid="quote-group"]').should('contain', '5 x')
 
     cy.contains('[data-testid="order-line"]', SCREW).contains('button', 'Eliminar línea').click()
     cy.wait('@quote')

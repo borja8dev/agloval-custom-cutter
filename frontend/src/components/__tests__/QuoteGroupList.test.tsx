@@ -100,6 +100,20 @@ describe('QuoteGroupList', () => {
     expect(screen.getByTestId('quote-group')).toHaveTextContent('1 barra de 2,40 m');
   });
 
+  test('can leave out the product name when the caller already shows it', () => {
+    const groups: QuoteGroup[] = [boardGroup, ...makeQuote().groups, linearGroup];
+    render(<QuoteGroupList groups={groups} showProductName={false} />);
+
+    const items = screen.getAllByTestId('quote-group');
+    expect(items[0]).not.toHaveTextContent('Melamina Blanca');
+    expect(items[0]).toHaveTextContent('4,00 m² usados · 2 tableros de 244 x 122 cm');
+    expect(items[0]).toHaveTextContent('2 tableros x 46,14 EUR = 92,28 EUR');
+    expect(items[1]).not.toHaveTextContent('Tornillo');
+    expect(items[1]).toHaveTextContent('12 x 0,35 EUR = 4,20 EUR');
+    expect(items[2]).not.toHaveTextContent('Perfil');
+    expect(items[2]).toHaveTextContent('3 barras de 2,40 m');
+  });
+
   test('renders one item per group and never mentions waste', () => {
     const groups: QuoteGroup[] = [boardGroup, ...makeQuote().groups, linearGroup];
     render(<QuoteGroupList groups={groups} />);

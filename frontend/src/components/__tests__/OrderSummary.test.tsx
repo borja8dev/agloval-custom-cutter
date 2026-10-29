@@ -86,6 +86,14 @@ describe('OrderSummary', () => {
     expect(ud).toHaveTextContent('12 x 0,35 EUR = 4,20 EUR');
   });
 
+  test('names each product once, in full, above its calculation', () => {
+    setup();
+    const [m2, ud] = screen.getAllByTestId('order-line');
+    expect(within(m2).getAllByText(/Melamina Blanca 244x122/)).toHaveLength(1);
+    expect(within(ud).getAllByText(/Tornillo/)).toHaveLength(1);
+    expect(within(m2).getByText('Melamina Blanca 244x122')).not.toHaveClass('truncate');
+  });
+
   test('shows the total with two decimals and comma', () => {
     setup();
     expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
