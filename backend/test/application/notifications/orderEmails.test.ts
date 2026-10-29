@@ -1,9 +1,11 @@
 import {
   buildAglovalEmail,
   buildCustomerEmail,
+  buildQuoteEmail,
   formatEuros,
 } from '../../../src/application/notifications/orderEmails';
 import { SubmittedOrder } from '../../../src/application/dto/OrderSubmit';
+import { SubmittedQuote } from '../../../src/application/dto/QuoteSubmit';
 import { OrderQuoteProductDTO } from '../../../src/application/dto/OrderQuote';
 
 const baseProduct: OrderQuoteProductDTO = {
@@ -78,6 +80,166 @@ const hostileOrder: SubmittedOrder = {
     ],
   },
 };
+
+const singleOrder: SubmittedOrder = {
+  ...order,
+  quote: {
+    ...order.quote,
+    groups: [
+      {
+        kind: 'BOARD',
+        product: { ...baseProduct, name: 'Melamina blanca 16 mm', unit: 'M2' },
+        pieces: [{ width: 100, height: 80, quantity: 1 }],
+        pieceCount: 1,
+        usedAreaM2: 0.8,
+        boardAreaM2: 2.9768,
+        boardsNeeded: 1,
+        pricePerM2: 15.5,
+        pricePerBoard: 46.14,
+        price: 46.14,
+      },
+      {
+        kind: 'LINEAR',
+        product: { ...baseProduct, name: 'Canto PVC', unit: 'ML', lengthCm: 240 },
+        quantity: 1,
+        lengthM: 2.4,
+        pricePerMeter: 5,
+        price: 12,
+      },
+    ],
+  },
+};
+
+const referencedOrder: SubmittedOrder = {
+  ...order,
+  reference: 'Obra Calle Mayor',
+  fromQuoteNumber: 7,
+};
+
+const MALICIOUS_REFERENCE = '<script>alert(1)</script> & "co"';
+
+const quoteDoc: SubmittedQuote = {
+  quoteNumber: 5,
+  customer: order.customer,
+  quote: order.quote,
+};
+
+describe('singular and plural counts', () => {
+  test.each([
+    ['customer', buildCustomerEmail],
+    ['Agloval', buildAglovalEmail],
+  ] as const)('the %s email says "1 pieza", "1 tablero" and "1 barra"', (_name, build) => {
+    const email = build(singleOrder);
+    for (const body of [email.text, email.html]) {
+      expect(body).toContain('1 pieza,');
+      expect(body).toContain('1 tablero ×');
+      expect(body).toContain('1 barra ×');
+      expect(body).not.toMatch(/\b1 (piezas|tableros|barras)\b/);
+    }
+  });
+
+  test('keeps the plural for more than one', () => {
+    const { text } = buildCustomerEmail(order);
+    expect(text).toContain('20 piezas,');
+    expect(text).toContain('6 tableros ×');
+    expect(text).toContain('3 barras ×');
+  });
+});
+
+describe('order reference and source quote', () => {
+  test.each([
+    ['customer', buildCustomerEmail],
+    ['Agloval', buildAglovalEmail],
+  ] as const)('the %s email shows the reference and the source quote', (_name, build) => {
+    const email = build(referencedOrder);
+    for (const body of [email.text, email.html]) {
+      expect(body).toContain('Referencia: Obra Calle Mayor');
+      expect(body).toContain('Desde el presupuesto nº 7');
+    }
+  });
+
+  test.each([
+    ['customer', buildCustomerEmail],
+    ['Agloval', buildAglovalEmail],
+  ] as const)('the %s email omits both lines when absent', (_name, build) => {
+    const email = build(order);
+    for (const body of [email.text, email.html]) {
+      expect(body).not.toContain('Referencia');
+      expect(body).not.toContain('Desde el presupuesto');
+    }
+  });
+
+  test('the Agloval subject ends with the reference when present', () => {
+    expect(buildAglovalEmail(referencedOrder).subject).toBe(
+      'Nuevo pedido nº 42 · Ana García · Obra Calle Mayor'
+    );
+  });
+
+  test.each([
+    ['customer', buildCustomerEmail],
+    ['Agloval', buildAglovalEmail],
+  ] as const)('the %s email escapes a malicious reference in the HTML', (_name, build) => {
+    const { html, text } = build({ ...order, reference: MALICIOUS_REFERENCE });
+    expect(html).not.toContain('<script>');
+    expect(html).toContain(
+      'Referencia: &lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;co&quot;'
+    );
+    expect(text).toContain(`Referencia: ${MALICIOUS_REFERENCE}`);
+  });
+});
+
+describe('buildQuoteEmail', () => {
+  const email = buildQuoteEmail(quoteDoc);
+
+  test('uses the Spanish subject with the quote number', () => {
+    expect(email.subject).toBe('Tu presupuesto · Presupuesto nº 5');
+  });
+
+  test.each(['html', 'text'] as const)(
+    'the %s version has the heading, greeting, breakdown, total and note',
+    (part) => {
+      const body = email[part];
+      expect(body).toContain('Presupuesto nº 5');
+      expect(body).toContain('Hola Ana García');
+      expect(body).toContain('6 tableros × 46,14 €');
+      expect(body).toContain('12 uds. × 0,35 €');
+      expect(body).toContain('3 barras × 2,40 m × 5,00 €/m');
+      expect(body).toContain('1.317,04 €');
+      expect(body).toContain(
+        'Precios según la tarifa vigente. Agloval te confirmará disponibilidad y entrega ' +
+          'cuando lo pases a pedido.'
+      );
+      expect(body).toContain('Agloval · Aglomerados Valencia S.L.');
+      expect(body).not.toContain('Referencia');
+    }
+  );
+
+  test('the text version contains no HTML', () => {
+    expect(email.text).not.toMatch(/<[a-z/][^>]*>/i);
+  });
+
+  test('has no reply-to address', () => {
+    expect(email).not.toHaveProperty('replyTo');
+  });
+
+  test('shows the reference when present', () => {
+    const { html, text } = buildQuoteEmail({ ...quoteDoc, reference: 'Baño' });
+    expect(text).toContain('Referencia: Baño');
+    expect(html).toContain('Referencia: Baño');
+  });
+
+  test('escapes customer data and a malicious reference in the HTML', () => {
+    const { html, text } = buildQuoteEmail({
+      ...quoteDoc,
+      customer: hostileOrder.customer,
+      reference: MALICIOUS_REFERENCE,
+    });
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;');
+    expect(html).toContain('Referencia: &lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(text).toContain(`Referencia: ${MALICIOUS_REFERENCE}`);
+  });
+});
 
 describe('formatEuros', () => {
   test.each([

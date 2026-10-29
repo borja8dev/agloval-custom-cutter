@@ -1,9 +1,11 @@
 import { SubmittedOrder } from '../dto/OrderSubmit';
-import { OrderQuoteGroupDTO } from '../dto/OrderQuote';
+import { SubmittedQuote } from '../dto/QuoteSubmit';
+import { OrderQuoteGroupDTO, OrderQuoteResponseDTO } from '../dto/OrderQuote';
 
 /**
- * Pure builders for the order emails (Spanish copy). Every customer-provided
- * string and product name is HTML-escaped; the plain-text versions are raw.
+ * Pure builders for the order and quote emails (Spanish copy). Every
+ * customer-provided string and product name is HTML-escaped; the plain-text
+ * versions are raw.
  */
 
 export interface OrderEmailContent {
@@ -19,6 +21,9 @@ export interface AglovalEmailContent extends OrderEmailContent {
 const BRAND_COLOUR = '#00628F';
 const SIGNATURE = 'Agloval · Aglomerados Valencia S.L.';
 const REVIEW_NOTICE = 'Agloval revisará tu pedido y te confirmará la disponibilidad y la entrega.';
+const QUOTE_NOTICE =
+  'Precios según la tarifa vigente. Agloval te confirmará disponibilidad y entrega ' +
+  'cuando lo pases a pedido.';
 
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -44,6 +49,10 @@ export function formatEuros(value: number): string {
   return `${formatDecimal(value)} €`;
 }
 
+/** "1 tablero", "6 tableros". */
+const count = (amount: number, singular: string, plural: string): string =>
+  `${amount} ${amount === 1 ? singular : plural}`;
+
 interface BreakdownRow {
   name: string;
   detail: string;
@@ -57,8 +66,8 @@ function toRow(group: OrderQuoteGroupDTO): BreakdownRow {
       return {
         name: group.product.name,
         detail:
-          `${group.pieceCount} piezas, ${formatDecimal(group.usedAreaM2)} m² · ` +
-          `${group.boardsNeeded} tableros × ${formatEuros(group.pricePerBoard)}`,
+          `${count(group.pieceCount, 'pieza', 'piezas')}, ${formatDecimal(group.usedAreaM2)} m² · ` +
+          `${count(group.boardsNeeded, 'tablero', 'tableros')} × ${formatEuros(group.pricePerBoard)}`,
         price,
       };
     case 'UNIT':
@@ -71,24 +80,22 @@ function toRow(group: OrderQuoteGroupDTO): BreakdownRow {
       return {
         name: group.product.name,
         detail:
-          `${group.quantity} barras × ${formatDecimal(group.lengthM)} m × ` +
+          `${count(group.quantity, 'barra', 'barras')} × ${formatDecimal(group.lengthM)} m × ` +
           `${formatEuros(group.pricePerMeter)}/m`,
         price,
       };
   }
 }
 
-function breakdownText(order: SubmittedOrder): string {
-  const lines = order.quote.groups
-    .map(toRow)
-    .map((row) => `- ${row.name}: ${row.detail} = ${row.price}`);
-  return [...lines, '', `Total: ${formatEuros(order.quote.total)}`].join('\n');
+function breakdownText(quote: OrderQuoteResponseDTO): string {
+  const lines = quote.groups.map(toRow).map((row) => `- ${row.name}: ${row.detail} = ${row.price}`);
+  return [...lines, '', `Total: ${formatEuros(quote.total)}`].join('\n');
 }
 
 const CELL = 'padding:8px;border-bottom:1px solid #e2e8f0;vertical-align:top;';
 
-function breakdownHtml(order: SubmittedOrder): string {
-  const rows = order.quote.groups
+function breakdownHtml(quote: OrderQuoteResponseDTO): string {
+  const rows = quote.groups
     .map(toRow)
     .map(
       (row) =>
@@ -101,9 +108,25 @@ function breakdownHtml(order: SubmittedOrder): string {
     '<table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;">' +
     `${rows}<tr><td style="padding:8px;font-weight:bold;">Total</td>` +
     '<td style="padding:8px;font-weight:bold;text-align:right;white-space:nowrap;">' +
-    `${escapeHtml(formatEuros(order.quote.total))}</td></tr></table>`
+    `${escapeHtml(formatEuros(quote.total))}</td></tr></table>`
   );
 }
+
+/** "Referencia: X" and "Desde el presupuesto nº M", only for what is present. */
+function contextLines(doc: { reference?: string; fromQuoteNumber?: number }): string[] {
+  const lines: string[] = [];
+  if (doc.reference) lines.push(`Referencia: ${doc.reference}`);
+  if (doc.fromQuoteNumber !== undefined) {
+    lines.push(`Desde el presupuesto nº ${doc.fromQuoteNumber}`);
+  }
+  return lines;
+}
+
+/** The context lines as text paragraphs: a trailing blank line when there are any. */
+const contextText = (lines: string[]): string[] => (lines.length ? [...lines, ''] : []);
+
+const contextHtml = (lines: string[]): string =>
+  lines.map((line) => `<p style="margin:4px 0;">${escapeHtml(line)}</p>`).join('');
 
 function layout(heading: string, body: string): string {
   return (
@@ -118,35 +141,60 @@ function layout(heading: string, body: string): string {
 const sectionHeading = (title: string): string =>
   `<h2 style="color:${BRAND_COLOUR};font-size:16px;margin:16px 0 8px;">${escapeHtml(title)}</h2>`;
 
-export function buildCustomerEmail(order: SubmittedOrder): OrderEmailContent {
-  const { name } = order.customer;
-  const heading = `Pedido nº ${order.orderNumber}`;
-  const intro = `Hola ${name}, hemos recibido tu solicitud. Este es el resumen de tu pedido:`;
-
+/** Shared shape of the two customer emails: greeting, context, breakdown, notice. */
+function customerEmail(
+  heading: string,
+  intro: string,
+  context: string[],
+  quote: OrderQuoteResponseDTO,
+  notice: string
+): Omit<OrderEmailContent, 'subject'> {
   const text = [
     heading,
     '',
     intro,
     '',
-    breakdownText(order),
+    ...contextText(context),
+    breakdownText(quote),
     '',
-    REVIEW_NOTICE,
+    notice,
     '',
     SIGNATURE,
   ].join('\n');
 
   const html = layout(
     heading,
-    `<p>${escapeHtml(intro)}</p>${sectionHeading('Resumen')}${breakdownHtml(order)}` +
-      `<p style="margin-top:16px;">${escapeHtml(REVIEW_NOTICE)}</p>`
+    `<p>${escapeHtml(intro)}</p>${contextHtml(context)}` +
+      `${sectionHeading('Resumen')}${breakdownHtml(quote)}` +
+      `<p style="margin-top:16px;">${escapeHtml(notice)}</p>`
   );
 
-  return { subject: `Hemos recibido tu solicitud · Pedido nº ${order.orderNumber}`, html, text };
+  return { html, text };
+}
+
+export function buildCustomerEmail(order: SubmittedOrder): OrderEmailContent {
+  const heading = `Pedido nº ${order.orderNumber}`;
+  const intro = `Hola ${order.customer.name}, hemos recibido tu solicitud. Este es el resumen de tu pedido:`;
+  return {
+    subject: `Hemos recibido tu solicitud · Pedido nº ${order.orderNumber}`,
+    ...customerEmail(heading, intro, contextLines(order), order.quote, REVIEW_NOTICE),
+  };
+}
+
+/** Sent to the customer only: Agloval hears about a quote once it becomes an order. */
+export function buildQuoteEmail(quote: SubmittedQuote): OrderEmailContent {
+  const heading = `Presupuesto nº ${quote.quoteNumber}`;
+  const intro = `Hola ${quote.customer.name}, este es tu presupuesto:`;
+  return {
+    subject: `Tu presupuesto · Presupuesto nº ${quote.quoteNumber}`,
+    ...customerEmail(heading, intro, contextLines(quote), quote.quote, QUOTE_NOTICE),
+  };
 }
 
 export function buildAglovalEmail(order: SubmittedOrder): AglovalEmailContent {
   const { name, email, phone } = order.customer;
   const heading = `Nuevo pedido nº ${order.orderNumber}`;
+  const context = contextLines(order);
   const contact: Array<[string, string]> = [
     ['Nombre', name],
     ['Correo', email],
@@ -160,7 +208,8 @@ export function buildAglovalEmail(order: SubmittedOrder): AglovalEmailContent {
     ...contact.map(([label, value]) => `${label}: ${value}`),
     '',
     'Pedido',
-    breakdownText(order),
+    ...context,
+    breakdownText(order.quote),
     '',
     'Responde a este correo para escribir directamente al cliente.',
   ].join('\n');
@@ -177,10 +226,12 @@ export function buildAglovalEmail(order: SubmittedOrder): AglovalEmailContent {
     heading,
     `${sectionHeading('Cliente')}` +
       `<table role="presentation" style="border-collapse:collapse;font-size:14px;">${contactRows}</table>` +
-      `${sectionHeading('Pedido')}${breakdownHtml(order)}` +
+      `${sectionHeading('Pedido')}${contextHtml(context)}${breakdownHtml(order.quote)}` +
       '<p style="margin-top:16px;color:#475569;">' +
       'Responde a este correo para escribir directamente al cliente.</p>'
   );
 
-  return { subject: `${heading} · ${name}`, html, text, replyTo: email };
+  // The subject is plain text: the reference helps Agloval find the order in the inbox.
+  const subject = [heading, name, order.reference].filter(Boolean).join(' · ');
+  return { subject, html, text, replyTo: email };
 }

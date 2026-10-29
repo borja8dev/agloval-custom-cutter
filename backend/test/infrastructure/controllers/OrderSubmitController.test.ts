@@ -5,6 +5,7 @@ import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUs
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
 import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
+import { IQuoteSubmitUseCase } from '../../../src/application/ports/in/QuoteSubmitUseCase';
 import { OrderSubmitResponseDTO } from '../../../src/application/dto/OrderSubmit';
 import {
   EmailDeliveryException,
@@ -60,6 +61,7 @@ describe('POST /api/orders/submit', () => {
       productUseCase: {} as IProductUseCase,
       orderQuoteUseCase: {} as IOrderQuoteUseCase,
       orderSubmitUseCase,
+      quoteSubmitUseCase: {} as IQuoteSubmitUseCase,
       submitRateLimit,
     });
 
@@ -77,6 +79,29 @@ describe('POST /api/orders/submit', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual(submitResponse);
     expect(orderSubmitUseCase.submit).toHaveBeenCalledWith(body);
+  });
+
+  test('passes the optional reference and source quote number to the use case', async () => {
+    const withExtras = { ...body, reference: ' Obra Calle Mayor ', fromQuoteNumber: 4 };
+
+    await request(app).post('/api/orders/submit').send(withExtras).expect(201);
+
+    expect(orderSubmitUseCase.submit).toHaveBeenCalledWith({
+      ...withExtras,
+      reference: 'Obra Calle Mayor',
+    });
+  });
+
+  test('returns 400 for an invalid reference or source quote number', async () => {
+    const response = await request(app)
+      .post('/api/orders/submit')
+      .send({ ...body, reference: 'a\nb', fromQuoteNumber: 0 })
+      .expect(400);
+
+    const fieldErrors = JSON.stringify(response.body.error.details);
+    expect(fieldErrors).toContain('La referencia contiene caracteres no válidos');
+    expect(fieldErrors).toContain('fromQuoteNumber');
+    expect(orderSubmitUseCase.submit).not.toHaveBeenCalled();
   });
 
   test('returns 400 with the Spanish messages and does not call the use case', async () => {
@@ -116,6 +141,7 @@ describe('POST /api/orders/submit', () => {
       productUseCase: {} as IProductUseCase,
       orderQuoteUseCase: quote,
       orderSubmitUseCase,
+      quoteSubmitUseCase: {} as IQuoteSubmitUseCase,
       submitRateLimit: { max: 1, windowMs: 60_000 },
     });
 

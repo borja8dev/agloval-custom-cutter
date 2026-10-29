@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `POST /api/quotes/submit`: prices a quote again on the server and emails it to the customer only ("Tu presupuesto · Presupuesto nº N"); Agloval is never emailed for a quote. It shares the per-IP limit of `POST /api/orders/submit` (5 submissions of either kind per 10 minutes).
+- An optional `reference` (up to 80 characters) on order and quote submissions, shown as "Referencia: …" in the emails and appended to the Agloval subject.
+- An optional `fromQuoteNumber` on order submissions, shown as "Desde el presupuesto nº M" in both order emails.
 
 ### Changed
 
 ### Fixed
+- Emails use the singular for one item: "1 pieza", "1 tablero", "1 barra".
 
 ### Removed
 

@@ -5,6 +5,7 @@ import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUs
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
 import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
+import { IQuoteSubmitUseCase } from '../../../src/application/ports/in/QuoteSubmitUseCase';
 import {
   FamilySummary,
   ProductRecord,
@@ -50,6 +51,7 @@ describe('Product and family endpoints', () => {
       productUseCase,
       orderQuoteUseCase: {} as IOrderQuoteUseCase,
       orderSubmitUseCase: {} as IOrderSubmitUseCase,
+      quoteSubmitUseCase: {} as IQuoteSubmitUseCase,
     });
   });
 

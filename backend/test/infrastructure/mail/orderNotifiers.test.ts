@@ -128,4 +128,26 @@ describe('LogOrderNotifier', () => {
     expect(logged).toContain('Nuevo pedido nº 3');
     expect(logged).not.toContain('Ana García');
   });
+
+  test('drops the customer name and the reference that follow the order number', async () => {
+    const log = jest.fn();
+    const notifier = new LogOrderNotifier(log);
+
+    await notifier.send({ ...message, subject: 'Nuevo pedido nº 3 · Ana García · Obra Mayor' });
+
+    const logged = log.mock.calls[0]?.join(' ') ?? '';
+    expect(logged).toContain('"Nuevo pedido nº 3"');
+    expect(logged).not.toContain('Ana García');
+    expect(logged).not.toContain('Obra Mayor');
+  });
+
+  test('keeps the whole quote subject, which has no personal data', async () => {
+    const log = jest.fn();
+    const notifier = new LogOrderNotifier(log);
+
+    await notifier.send({ ...message, subject: 'Tu presupuesto · Presupuesto nº 5' });
+
+    const logged = log.mock.calls[0]?.join(' ') ?? '';
+    expect(logged).toContain('"Tu presupuesto · Presupuesto nº 5"');
+  });
 });

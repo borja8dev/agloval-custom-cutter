@@ -3,6 +3,7 @@ import { createExpressApp } from './infrastructure/config/express';
 import { CalculationApplicationService } from './application/services/CalculationApplicationService';
 import { QuoteOrderService } from './application/services/QuoteOrderService';
 import { SubmitOrderService } from './application/services/SubmitOrderService';
+import { SubmitQuoteService } from './application/services/SubmitQuoteService';
 import { createOrderNotifier } from './infrastructure/mail/createOrderNotifier';
 import { ProductUseCaseAdapter } from './application/services/ProductUseCaseAdapter';
 import { ProductRepository } from './infrastructure/persistence/repositories/ProductRepository';
@@ -36,12 +37,15 @@ async function main(): Promise<void> {
   const orderSubmitService = new SubmitOrderService(orderQuoteService, orderNotifier, {
     aglovalEmail: process.env.ORDER_NOTIFICATION_EMAIL,
   });
+  // Quotes only ever email the customer, so they take no Agloval address.
+  const quoteSubmitService = new SubmitQuoteService(orderQuoteService, orderNotifier);
 
   const app = createExpressApp({
     calculationUseCase: calculationService,
     productUseCase,
     orderQuoteUseCase: orderQuoteService,
     orderSubmitUseCase: orderSubmitService,
+    quoteSubmitUseCase: quoteSubmitService,
   });
 
   const PORT = process.env.PORT || 5000;
