@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 
 interface OrderBarProps {
-  orderNumber: number;
   lineCount: number;
   totalText: string;
   onShowOrder: () => void;
@@ -13,7 +12,6 @@ const BODY_SPACE_CLASSES = ['pb-[calc(5rem_+_env(safe-area-inset-bottom))]', 'lg
 
 /** Fixed summary of the order for phones and tablets (hidden from `lg` up). */
 export const OrderBar: React.FC<OrderBarProps> = ({
-  orderNumber,
   lineCount,
   totalText,
   onShowOrder,
@@ -32,7 +30,7 @@ export const OrderBar: React.FC<OrderBarProps> = ({
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <p className="min-w-0 text-sm text-gray-700">
-          <span className="font-bold text-brand-dark">Pedido nº {orderNumber}</span>
+          <span className="font-bold text-brand-dark">Tu pedido</span>
           <span aria-hidden="true"> · </span>
           <span>{lines}</span>
           <span aria-hidden="true"> · </span>

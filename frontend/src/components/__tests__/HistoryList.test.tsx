@@ -23,7 +23,7 @@ const entry = (
 const lucia = { name: 'Lucía Ferrer', email: 'lucia@example.com', phone: '600 123 456' };
 
 function setup(kind: HistoryKind = 'order', entries?: HistoryEntry[]) {
-  const handlers = { onRepeat: vi.fn(), onRemove: vi.fn() };
+  const handlers = { onRepeat: vi.fn(), onRemove: vi.fn(), onConvert: vi.fn() };
   const list = entries ?? [
     entry(3, { total: 317.04, customer: lucia, reference: 'Cocina Ruzafa' }, kind),
     entry(2, {}, kind),
@@ -103,5 +103,39 @@ describe('HistoryList', () => {
     const { onRemove } = setup('quote');
     await userEvent.click(screen.getByRole('button', { name: 'Eliminar presupuesto nº 2' }));
     expect(onRemove).toHaveBeenCalledWith(2);
+  });
+  test('offers "Pasar a pedido" first on a quote that is not an order yet', async () => {
+    const { onConvert } = setup('quote', [
+      entry(4, { convertedToOrder: 7 }, 'quote'),
+      entry(3, {}, 'quote'),
+    ]);
+    const [converted, open] = screen.getAllByTestId('history-entry');
+
+    expect(within(converted).queryByRole('button', { name: /Pasar a pedido/ })).toBeNull();
+    const actions = within(open)
+      .getAllByRole('button')
+      .map((button) => button.textContent)
+      .slice(1);
+    expect(actions).toEqual(['Pasar a pedido', 'Repetir', 'Eliminar']);
+
+    await userEvent.click(within(open).getByRole('button', { name: 'Pasar a pedido' }));
+    expect(onConvert).toHaveBeenCalledWith(expect.objectContaining({ number: 3 }));
+  });
+
+  test('never offers "Pasar a pedido" on orders or without a handler', () => {
+    setup('order');
+    expect(screen.queryByRole('button', { name: 'Pasar a pedido' })).toBeNull();
+  });
+
+  test('hides "Pasar a pedido" when no handler is given', () => {
+    render(
+      <HistoryList
+        kind="quote"
+        entries={[entry(1, {}, 'quote')]}
+        onRepeat={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Pasar a pedido' })).toBeNull();
   });
 });

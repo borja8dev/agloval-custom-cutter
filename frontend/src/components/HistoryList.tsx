@@ -8,6 +8,8 @@ interface HistoryListProps {
   entries: HistoryEntry[];
   onRepeat: (entry: HistoryEntry) => void;
   onRemove: (number: number) => void;
+  /** Turns a quote into an order; quotes that already became one do not offer it. */
+  onConvert?: (entry: HistoryEntry) => void;
 }
 
 const ENTRY_LABEL: Record<HistoryKind, string> = {
@@ -17,6 +19,9 @@ const ENTRY_LABEL: Record<HistoryKind, string> = {
 
 const focusRing =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
+
+const primaryButtonClass = `flex-1 bg-brand-dark text-white py-1.5 px-3 rounded-md text-sm font-medium hover:brightness-90 ${focusRing}`;
+const secondaryButtonClass = `flex-1 border border-brand-dark text-brand-dark bg-white py-1.5 px-3 rounded-md text-sm font-medium hover:bg-brand-light ${focusRing}`;
 
 const badgeClass =
   'inline-block rounded-full bg-brand-light text-brand-dark text-xs font-semibold px-2 py-0.5';
@@ -36,11 +41,14 @@ const HistoryCard: React.FC<{
   label: string;
   onRepeat: (entry: HistoryEntry) => void;
   onRemove: (number: number) => void;
-}> = ({ entry, label, onRepeat, onRemove }) => {
+  onConvert?: (entry: HistoryEntry) => void;
+}> = ({ entry, label, onRepeat, onRemove, onConvert }) => {
   const [expanded, setExpanded] = useState(false);
   const panelId = `history-panel-${entry.kind}-${entry.number}`;
   const title = `${label} nº ${entry.number}`;
   const badge = stateBadge(entry);
+  const canConvert =
+    onConvert !== undefined && entry.kind === 'quote' && entry.convertedToOrder === undefined;
 
   return (
     <li
@@ -78,10 +86,15 @@ const HistoryCard: React.FC<{
       )}
 
       <div className="flex flex-wrap gap-2">
+        {canConvert && (
+          <button type="button" onClick={() => onConvert?.(entry)} className={primaryButtonClass}>
+            Pasar a pedido
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onRepeat(entry)}
-          className={`flex-1 bg-brand-dark text-white py-1.5 px-3 rounded-md text-sm font-medium hover:brightness-90 ${focusRing}`}
+          className={canConvert ? secondaryButtonClass : primaryButtonClass}
         >
           Repetir
         </button>
@@ -99,7 +112,13 @@ const HistoryCard: React.FC<{
 };
 
 /** Presentational list of saved quotes or orders, newest first as given. */
-export const HistoryList: React.FC<HistoryListProps> = ({ kind, entries, onRepeat, onRemove }) => (
+export const HistoryList: React.FC<HistoryListProps> = ({
+  kind,
+  entries,
+  onRepeat,
+  onRemove,
+  onConvert,
+}) => (
   <ul data-testid="history-list" className="grid gap-3 md:grid-cols-2 md:items-start">
     {entries.map((entry) => (
       <HistoryCard
@@ -108,6 +127,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ kind, entries, onRepea
         label={ENTRY_LABEL[kind]}
         onRepeat={onRepeat}
         onRemove={onRemove}
+        onConvert={onConvert}
       />
     ))}
   </ul>

@@ -23,7 +23,7 @@ Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1
 - [x] **T17** Backend: `POST /api/quotes/submit`, optional `reference`, `fromQuoteNumber`, singular/plural in emails, shared rate limit, docs. Route: delegated writer (many files).
 - [x] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
 - [x] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
-- [ ] **T20** Quote → order flow: "Guardar presupuesto", reference field, "Pasar a pedido" with price-change notice, "Repetir". Route: delegated writer.
+- [x] **T20** Quote → order flow. Changed on 2026-10-30 at the user's request: one "Confirmar" button opens "Confirmar envío", where the user chooses **Presupuesto** (default) or **Pedido** with two selectable cards, then fills the customer details and an optional reference; the entry is saved to the matching history. "Pasar a pedido" (with a price-change notice) and "Repetir" from the quote history. Route: delegated writer.
 - [ ] **T21** Cypress: adapt history specs, stubbed quote flow, Mailpit spec for quote and conversion. Route: delegated writer.
 - [ ] **Release v1.4.0**
 
@@ -47,5 +47,8 @@ Backend: `npm test`, `tsc`, lint. Frontend: `npm test -- --run`, build, lint. Cy
 
 - **T19** done (delegated writer). Branch `feat/history-pages`. Writer RED→GREEN: 17 failing tests first (routing, header nav, titles, search, router-state reorder). Parent spot check: frontend 30 files / 311 tests; full Cypress against the real backend 45 passed, 1 skipped (Mailpit spec, opt-in); `/pedidos` checked in the browser.
 
+- **T20** done (delegated writer). Branch `feat/quote-order-flow`. Writer RED→GREEN in api, CustomerDetailsForm, ConfirmSubmissionForm, OrderSummary, HistoryList, CuttingCalculator and HistoryPage tests. Parent spot check: frontend 31 files / 345 tests; full Cypress against the real backend **including the Mailpit spec**: 47/47. "Confirmar envío" window checked in the browser.
+- **T21** largely covered inside T19/T20 (history specs rewritten, quote → order spec, Mailpit spec updated). Remaining: Mailpit check that a quote produces only the customer email.
+
 ## Next step
-T20 quote → order flow.
+T21 remainder, then merge the chain in order and release v1.4.0.

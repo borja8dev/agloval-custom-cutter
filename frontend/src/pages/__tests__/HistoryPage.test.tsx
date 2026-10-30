@@ -1,10 +1,21 @@
-import { beforeEach, describe, expect, test } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+
+vi.mock('../../services/api', () => ({
+  getProduct: vi.fn(),
+  quoteOrder: vi.fn(),
+  submitOrder: vi.fn(),
+  getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
+  getFieldError: () => undefined,
+}));
+
+import { getProduct, quoteOrder, submitOrder } from '../../services/api';
 import { HistoryPage } from '../HistoryPage';
 import { HISTORY_KEYS } from '../../services/history';
-import { makeQuote } from '../../test/fixtures';
+import { CUSTOMER_SESSION_KEY } from '../../hooks/useCustomerSession';
+import { makeQuote, udProduct } from '../../test/fixtures';
 import type { HistoryEntry, HistoryKind } from '../../types';
 
 const entry = (
@@ -51,6 +62,11 @@ function renderPage(kind: HistoryKind) {
     </MemoryRouter>
   );
   return user;
+}
+
+function cleanupAndRender(kind: HistoryKind) {
+  cleanup();
+  return renderPage(kind);
 }
 
 const search = () => screen.getByLabelText('Buscar por número, cliente o referencia');
@@ -199,6 +215,172 @@ describe('HistoryPage', () => {
     expect(JSON.parse(screen.getByTestId('home-state').textContent!)).toEqual({
       reorder: 3,
       kind: 'quote',
+    });
+  });
+  describe('"Pasar a pedido"', () => {
+    const ana = customer('Ana Pérez');
+    const quoteToConvert = () =>
+      entry('quote', 3, { customer: ana, reference: 'Cocina Ruzafa', total: 4.2 });
+
+    const storedEntries = (kind: HistoryKind) =>
+      JSON.parse(localStorage.getItem(HISTORY_KEYS[kind]) ?? '{"entries":[]}')
+        .entries as HistoryEntry[];
+
+    beforeEach(() => {
+      vi.mocked(getProduct).mockReset().mockResolvedValue(udProduct);
+      vi.mocked(quoteOrder).mockReset().mockResolvedValue(makeQuote({ total: 4.2 }));
+      vi.mocked(submitOrder)
+        .mockReset()
+        .mockImplementation(async (request) => ({
+          orderNumber: request.orderNumber,
+          quote: makeQuote({ total: 4.2 }),
+          emails: { customer: 'sent', agloval: 'sent' },
+        }));
+    });
+
+    async function openConversion(user: ReturnType<typeof userEvent.setup>) {
+      const [first] = rows();
+      await user.click(within(first).getByRole('button', { name: 'Pasar a pedido' }));
+      return within(screen.getByRole('dialog', { name: 'Pasar a pedido' }));
+    }
+
+    test('only the quotes that are not orders yet offer it', () => {
+      seed('quote', sampleQuotes());
+      renderPage('quote');
+
+      const [open, converted] = rows();
+      expect(within(open).getByRole('button', { name: 'Pasar a pedido' })).toBeInTheDocument();
+      expect(within(converted).queryByRole('button', { name: 'Pasar a pedido' })).toBeNull();
+      expect(within(converted).getByText('Convertido en pedido nº 4')).toBeInTheDocument();
+    });
+
+    test('the orders page does not offer it', () => {
+      seed('order', [entry('order', 1)]);
+      renderPage('order');
+      expect(screen.queryByRole('button', { name: 'Pasar a pedido' })).toBeNull();
+    });
+
+    test('shows the quote, re-prices it and prefills its customer and reference', async () => {
+      seed('quote', [quoteToConvert()]);
+      seed('order', [], 6);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+
+      expect(dialog.getByText('Presupuesto nº 3')).toBeInTheDocument();
+      expect(dialog.getByText('Se enviará como pedido nº 7')).toBeInTheDocument();
+      expect(await dialog.findByText('Total: 4,20 EUR')).toBeInTheDocument();
+      expect(quoteOrder).toHaveBeenCalledWith({ lines: [{ productId: 'p_ud', quantity: 12 }] });
+      expect(dialog.queryByText(/El precio ha cambiado/)).toBeNull();
+      expect(dialog.getByLabelText('Nombre')).toHaveValue(ana.name);
+      expect(dialog.getByLabelText('Correo electrónico')).toHaveValue(ana.email);
+      expect(dialog.getByLabelText('Referencia (opcional)')).toHaveValue('Cocina Ruzafa');
+      expect(dialog.getByRole('button', { name: 'Enviar pedido a Agloval' })).toBeEnabled();
+    });
+
+    test('falls back to the session details when the quote has no customer', async () => {
+      localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(customer('Lucía Ferrer')));
+      seed('quote', [entry('quote', 1)]);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+
+      expect(dialog.getByLabelText('Nombre')).toHaveValue('Lucía Ferrer');
+    });
+
+    test('warns when the price changed since the quote', async () => {
+      vi.mocked(quoteOrder).mockResolvedValue(makeQuote({ total: 5.1 }));
+      seed('quote', [quoteToConvert()]);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+
+      expect(
+        await dialog.findByText(
+          'El precio ha cambiado desde el presupuesto: antes 4,20 EUR, ahora 5,10 EUR. Se enviará con el precio actual.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    test('does not allow sending when products no longer exist', async () => {
+      vi.mocked(getProduct).mockRejectedValue(new Error('Product not found'));
+      seed('quote', [quoteToConvert()]);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+
+      expect(await dialog.findByRole('alert')).toHaveTextContent(
+        'No se puede pasar a pedido: estos productos ya no existen: Tornillo'
+      );
+      expect(dialog.getByRole('button', { name: 'Enviar pedido a Agloval' })).toBeDisabled();
+      expect(quoteOrder).not.toHaveBeenCalled();
+    });
+
+    test('sends the order, saves it from the quote and marks the quote as converted', async () => {
+      seed('quote', [quoteToConvert()]);
+      seed('order', [], 6);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+      await dialog.findByText('Total: 4,20 EUR');
+      await user.click(dialog.getByRole('checkbox'));
+      await user.click(dialog.getByRole('button', { name: 'Enviar pedido a Agloval' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(submitOrder).toHaveBeenCalledWith({
+        orderNumber: 7,
+        fromQuoteNumber: 3,
+        customer: ana,
+        reference: 'Cocina Ruzafa',
+        privacyAccepted: true,
+        lines: [{ productId: 'p_ud', quantity: 12 }],
+      });
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Presupuesto nº 3 pasado a pedido nº 7.'
+      );
+      const [quoteRow] = rows();
+      expect(within(quoteRow).getByText('Convertido en pedido nº 7')).toBeInTheDocument();
+      expect(within(quoteRow).queryByRole('button', { name: 'Pasar a pedido' })).toBeNull();
+
+      const [order] = storedEntries('order');
+      expect(order).toMatchObject({
+        kind: 'order',
+        number: 7,
+        fromQuoteNumber: 3,
+        customer: ana,
+        reference: 'Cocina Ruzafa',
+      });
+      expect(storedEntries('quote')[0].convertedToOrder).toBe(7);
+    });
+
+    test('shows the order with "Desde presupuesto nº M" on the orders page afterwards', async () => {
+      seed('quote', [quoteToConvert()]);
+      const user = renderPage('quote');
+      const dialog = await openConversion(user);
+      await dialog.findByText('Total: 4,20 EUR');
+      await user.click(dialog.getByRole('checkbox'));
+      await user.click(dialog.getByRole('button', { name: 'Enviar pedido a Agloval' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+      cleanupAndRender('order');
+
+      expect(screen.getByText('Desde presupuesto nº 3')).toBeInTheDocument();
+      expect(rows()[0]).toHaveTextContent('Pedido nº 1');
+    });
+
+    test('a failed submission keeps the window open and the quote unconverted', async () => {
+      vi.mocked(submitOrder).mockRejectedValue(new Error('Demasiadas solicitudes'));
+      seed('quote', [quoteToConvert()]);
+      const user = renderPage('quote');
+
+      const dialog = await openConversion(user);
+      await dialog.findByText('Total: 4,20 EUR');
+      await user.click(dialog.getByRole('checkbox'));
+      await user.click(dialog.getByRole('button', { name: 'Enviar pedido a Agloval' }));
+
+      expect(await dialog.findByRole('alert')).toHaveTextContent('Demasiadas solicitudes');
+      expect(storedEntries('order')).toHaveLength(0);
+      expect(storedEntries('quote')[0].convertedToOrder).toBeUndefined();
     });
   });
 });

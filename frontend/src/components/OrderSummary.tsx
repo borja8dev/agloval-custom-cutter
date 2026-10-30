@@ -19,8 +19,6 @@ interface OrderSummaryProps {
   onConfirm: () => void;
   onClear: () => void;
   isConfirming?: boolean;
-  /** Number the order will get when confirmed; shown as "Pedido nº N". */
-  orderNumber?: number;
 }
 
 // Short colour cue when the total changes; amounts keep a readable contrast.
@@ -168,7 +166,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onConfirm,
   onClear,
   isConfirming = false,
-  orderNumber,
 }) => {
   const isEmpty = lines.length === 0;
   const canConfirm = !isEmpty && quote !== null && !isLoading && !isConfirming;
@@ -178,12 +175,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const trend = useChangeHighlight(totalValue);
   const totalText = hasTotal ? `${formatDecimal(totalValue)} EUR` : '--';
   const displayedText = hasTotal ? `${formatDecimal(animatedTotal)} EUR` : '--';
-  const title = orderNumber === undefined ? 'Pedido' : `Pedido nº ${orderNumber}`;
+  // The number depends on sending a quote or an order, so the panel shows none.
+  const lineCountText = lines.length === 1 ? '1 línea' : `${lines.length} líneas`;
 
   return (
     <div className="w-full bg-white rounded-lg shadow-md flex flex-col lg:flex-1 lg:min-h-0">
-      <div className="p-4 pb-2 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-brand-dark">{title}</h3>
+      <div className="p-4 pb-2 flex items-center justify-between gap-2">
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-lg font-bold text-brand-dark">Tu pedido</h3>
+          {!isEmpty && <p className="text-sm text-gray-500">{lineCountText}</p>}
+        </div>
         <p aria-live="polite" className="text-xs text-gray-500">
           {isLoading ? 'Calculando...' : ''}
         </p>
@@ -238,7 +239,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             disabled={!canConfirm}
             className="flex-1 bg-brand-dark text-white py-2 rounded-md font-medium hover:brightness-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            {isConfirming ? 'Confirmando...' : 'Confirmar pedido'}
+            {isConfirming ? 'Confirmando...' : 'Confirmar'}
           </button>
           <button
             type="button"

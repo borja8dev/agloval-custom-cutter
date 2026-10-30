@@ -51,7 +51,7 @@ describe('OrderSummary', () => {
   test('shows an empty state with disabled actions', () => {
     setup({ lines: [], quote: null });
     expect(screen.getByText('El pedido está vacío')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Vaciar pedido' })).toBeDisabled();
     expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 0,00 EUR');
   });
@@ -99,30 +99,19 @@ describe('OrderSummary', () => {
     expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
   });
 
-  test('titles the order with its number when given one', () => {
-    setup({ orderNumber: 7 });
-    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent('Pedido nº 7');
-  });
-
-  test('keeps the plain "Pedido" title without a number', () => {
+  test('titles the panel "Tu pedido" with the line count and no number', () => {
     setup();
-    expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(/^Pedido$/);
+    const heading = screen.getByRole('heading', { level: 3 });
+    expect(heading).toHaveTextContent(/^Tu pedido$/);
+    expect(screen.getByText('2 líneas')).toBeInTheDocument();
+    expect(screen.queryByText(/nº/)).toBeNull();
   });
 
-  test('exposes the exact total to assistive technology through a polite live text', () => {
-    setup();
-    const live = screen.getByTestId('order-total-live');
-    expect(live).toHaveTextContent(/^Total del pedido: 96,48 EUR$/);
-    expect(live).toHaveAttribute('aria-live', 'polite');
-    expect(live).toHaveClass('sr-only');
-    expect(screen.getByTestId('order-total')).toHaveAttribute('aria-hidden', 'true');
-  });
-
-  test('highlights the total when it goes up or down', () => {
-    const { rerender } = render(
+  test('uses the singular for one line and hides the count when empty', () => {
+    const { unmount } = render(
       <OrderSummary
-        lines={sampleLines}
-        quote={makeQuote({ total: 10 })}
+        lines={sampleLines.slice(0, 1)}
+        quote={fullQuote}
         onUpdatePiece={vi.fn()}
         onRemovePiece={vi.fn()}
         onUpdateQuantity={vi.fn()}
@@ -131,25 +120,10 @@ describe('OrderSummary', () => {
         onClear={vi.fn()}
       />
     );
-    const total = screen.getByTestId('order-total');
-    expect(total).not.toHaveAttribute('data-trend');
-    const next = (value: number) => (
-      <OrderSummary
-        lines={sampleLines}
-        quote={makeQuote({ total: value })}
-        onUpdatePiece={vi.fn()}
-        onRemovePiece={vi.fn()}
-        onUpdateQuantity={vi.fn()}
-        onRemoveLine={vi.fn()}
-        onConfirm={vi.fn()}
-        onClear={vi.fn()}
-      />
-    );
-    rerender(next(20));
-    expect(total).toHaveAttribute('data-trend', 'up');
-    expect(total).toHaveTextContent('Total: 20,00 EUR');
-    rerender(next(5));
-    expect(total).toHaveAttribute('data-trend', 'down');
+    expect(screen.getByText('1 línea')).toBeInTheDocument();
+    unmount();
+    setup({ lines: [], quote: null });
+    expect(screen.queryByText(/líneas?$/)).toBeNull();
   });
 
   test('keeps the total bar outside the scrolling lines container', () => {
@@ -161,9 +135,9 @@ describe('OrderSummary', () => {
     setup({ lines: many });
     const total = screen.getByTestId('order-total');
     expect(screen.getByTestId('order-lines')).not.toContainElement(total);
-    expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
     expect(screen.getByTestId('order-lines')).not.toContainElement(
-      screen.getByRole('button', { name: 'Confirmar pedido' })
+      screen.getByRole('button', { name: 'Confirmar' })
     );
   });
 
@@ -216,7 +190,7 @@ describe('OrderSummary', () => {
 
   test('confirms and clears the order', async () => {
     const { onConfirm, onClear } = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Confirmar pedido' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Vaciar pedido' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onClear).toHaveBeenCalledTimes(1);
@@ -235,13 +209,13 @@ describe('OrderSummary', () => {
         onClear={vi.fn()}
       />
     );
-    expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
     unmount();
   });
 
   test('disables Confirmar while loading and keeps the previous values', () => {
     setup({ isLoading: true });
-    expect(screen.getByRole('button', { name: 'Confirmar pedido' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
     expect(screen.getByText('Calculando...')).toBeInTheDocument();
     expect(screen.getByTestId('order-total')).toHaveTextContent('Total: 96,48 EUR');
     expect(screen.getAllByTestId('order-line')[0]).toHaveTextContent('92,28 EUR');

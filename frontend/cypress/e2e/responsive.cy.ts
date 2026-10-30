@@ -65,7 +65,7 @@ describe('Responsive layout', () => {
         cy.pickProduct(SUPERPAN)
         cy.get('[data-testid="add-piece-btn"]').should(($btn) => expectMinHeight($btn, 40))
         cy.addBoardPiece(100, 80, 1)
-        cy.contains('button', 'Confirmar pedido').should(($btn) => expectMinHeight($btn, 40))
+        cy.contains('button', /^Confirmar$/).should(($btn) => expectMinHeight($btn, 40))
         cy.contains('button', 'Vaciar pedido').should(($btn) => expectMinHeight($btn, 40))
         cy.pickProduct(SCREW)
         cy.get('[data-testid="add-line-btn"]').should(($btn) => expectMinHeight($btn, 40))
@@ -87,14 +87,14 @@ describe('Responsive layout', () => {
 
         cy.contains('h2', 'Pedido actual').scrollIntoView()
         expectInViewport('[data-testid="order-total"]')
-        cy.contains('button', 'Confirmar pedido').should('be.visible')
+        cy.contains('button', /^Confirmar$/).should('be.visible')
 
         // Several saved orders fit the history page without horizontal scroll.
-        cy.confirmOrder()
+        cy.confirmSubmission()
         cy.get('[role="status"]').should('contain', 'Pedido nº 1 enviado')
         for (let i = 0; i < 6; i++) {
           cy.addQuantity(i + 1)
-          cy.confirmOrder()
+          cy.confirmSubmission()
           cy.get('[role="status"]').should('contain', `Pedido nº ${i + 2} enviado`)
         }
         cy.openHistory()
@@ -103,8 +103,8 @@ describe('Responsive layout', () => {
       })
 
       if (width >= 1024) {
-        it('keeps the order panel, its number and its total in view while scrolling', () => {
-          cy.get('aside').contains('h3', 'Pedido nº 1')
+        it('keeps the order panel, its title and its total in view while scrolling', () => {
+          cy.get('aside').contains('h3', 'Tu pedido')
           cy.get('aside').should('have.css', 'position', 'sticky')
           cy.pickProduct(SUPERPAN)
           cy.addBoardPiece(100, 80, 2)
@@ -132,7 +132,7 @@ describe('Responsive layout', () => {
             .then((text) => {
               cy.get('[data-testid="order-bar"]')
                 .should('be.visible')
-                .and('contain', 'Pedido nº 1')
+                .and('contain', 'Tu pedido')
                 .and('contain', '1 línea')
                 .and('contain', text.replace('Total: ', ''))
             })

@@ -1,8 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HistoryList } from '../components/HistoryList';
+import { ConvertQuoteDialog } from '../components/ConvertQuoteDialog';
+import type { CustomerSubmission } from '../components/CustomerDetailsForm';
 import { useHistory } from '../hooks/useHistory';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useCustomerSession } from '../hooks/useCustomerSession';
+import { useQuoteConversion } from '../hooks/useQuoteConversion';
+import { getErrorMessage, getFieldError, submitOrder } from '../services/api';
+import { toQuoteRequest } from '../utils/order';
 import type { HistoryEntry, HistoryKind, ReorderRequest } from '../types';
 
 interface HistoryPageProps {
@@ -15,7 +21,8 @@ const COPY: Record<
 > = {
   quote: {
     title: 'Historial de presupuestos',
-    intro: 'Los presupuestos guardados en este navegador. Repite uno para cargarlo en el gestor.',
+    intro:
+      'Los presupuestos guardados en este navegador. Pásalo a pedido cuando tu cliente lo acepte, o repítelo para cargarlo en el gestor.',
     empty: 'Todavía no hay presupuestos',
     one: 'presupuesto',
     many: 'presupuestos',
@@ -49,6 +56,14 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ kind }) => {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const orderHistory = useHistory('order');
+  const session = useCustomerSession();
+  const [converting, setConverting] = useState<HistoryEntry | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const pricing = useQuoteConversion(converting);
 
   const normalizedQuery = normalize(query.trim());
   const visible = useMemo(
@@ -67,6 +82,50 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ kind }) => {
   const handleRepeat = (entry: HistoryEntry) => {
     const state: ReorderRequest = { reorder: entry.number, kind };
     navigate('/', { state });
+  };
+
+  const startConversion = (entry: HistoryEntry) => {
+    setSendError(null);
+    setReferenceError(null);
+    setStatus(null);
+    setConverting(entry);
+  };
+
+  const closeConversion = () => {
+    if (!isSending) setConverting(null);
+  };
+
+  // The order is sent with today's price; the quote keeps its own and is marked converted.
+  const handleConvert = async ({ customer, reference }: CustomerSubmission) => {
+    if (!converting || pricing.status !== 'ready' || isSending) return;
+    const quoteNumber = converting.number;
+    const orderNumber = orderHistory.nextNumber;
+    const details = reference ? { customer, reference } : { customer };
+    setIsSending(true);
+    setSendError(null);
+    setReferenceError(null);
+    try {
+      await submitOrder({
+        orderNumber,
+        fromQuoteNumber: quoteNumber,
+        ...details,
+        privacyAccepted: true,
+        lines: toQuoteRequest(pricing.lines).lines,
+      });
+      orderHistory.add(pricing.quote, pricing.lines, { ...details, fromQuoteNumber: quoteNumber });
+      history.markConverted(quoteNumber, orderNumber);
+      setConverting(null);
+      setStatus(`Presupuesto nº ${quoteNumber} pasado a pedido nº ${orderNumber}.`);
+    } catch (err) {
+      const fieldMessage = getFieldError(err, 'reference');
+      if (fieldMessage) {
+        setReferenceError(fieldMessage);
+      } else {
+        setSendError(getErrorMessage(err, 'No se pudo enviar el pedido. Inténtalo de nuevo.'));
+      }
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const titleId = `history-title-${kind}`;
@@ -113,6 +172,14 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ kind }) => {
           ))}
       </div>
 
+      <div role="status" aria-live="polite">
+        {status && (
+          <p className="text-sm border rounded-md p-2 bg-green-50 text-green-800 border-green-200">
+            {status}
+          </p>
+        )}
+      </div>
+
       {history.entries.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center space-y-4">
           <p className="text-gray-600">{copy.empty}</p>
@@ -145,8 +212,23 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ kind }) => {
             entries={visible}
             onRepeat={handleRepeat}
             onRemove={history.remove}
+            onConvert={kind === 'quote' ? startConversion : undefined}
           />
         </>
+      )}
+
+      {kind === 'quote' && (
+        <ConvertQuoteDialog
+          entry={converting}
+          orderNumber={orderHistory.nextNumber}
+          pricing={pricing}
+          fallbackCustomer={session.customer}
+          isSending={isSending}
+          error={sendError}
+          referenceError={referenceError}
+          onSubmit={handleConvert}
+          onClose={closeConversion}
+        />
       )}
     </section>
   );

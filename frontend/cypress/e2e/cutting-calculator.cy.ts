@@ -53,7 +53,7 @@ describe('Cutting calculator', () => {
   it('starts with an empty order', () => {
     cy.get('[data-testid="order-lines"]').should('contain', 'El pedido está vacío')
     cy.get('[data-testid="order-total"]').should('have.text', totalText(0))
-    cy.contains('button', 'Confirmar pedido').should('be.disabled')
+    cy.contains('button', /^Confirmar$/).should('be.disabled')
     cy.contains('button', 'Vaciar pedido').should('be.disabled')
   })
 
@@ -75,7 +75,7 @@ describe('Cutting calculator', () => {
     })
     cy.get('[data-testid="order-line"]').should('contain', '100 x 80 cm')
     cy.get('input[aria-label="Cantidad de piezas 100 x 80 cm"]').should('have.value', '20')
-    cy.contains('button', 'Confirmar pedido').should('be.enabled')
+    cy.contains('button', /^Confirmar$/).should('be.enabled')
   })
 
   it('adds up board, unit and bar groups into the order total', () => {
@@ -206,7 +206,7 @@ describe('Cutting calculator', () => {
     cy.get('[data-testid="order-lines"]').should('contain', 'El pedido está vacío')
     cy.get('[data-testid="order-total"]').should('have.text', totalText(0))
     cy.get('[data-testid="in-order-badge"]').should('not.exist')
-    cy.contains('button', 'Confirmar pedido').should('be.disabled')
+    cy.contains('button', /^Confirmar$/).should('be.disabled')
   })
 
   it('shows a Spanish alert and blocks confirmation when the quote fails', () => {
@@ -221,6 +221,6 @@ describe('Cutting calculator', () => {
     cy.wait('@quoteError')
 
     cy.get('[role="alert"]').should('contain', 'No se pudo calcular el pedido')
-    cy.contains('button', 'Confirmar pedido').should('be.disabled')
+    cy.contains('button', /^Confirmar$/).should('be.disabled')
   })
 })

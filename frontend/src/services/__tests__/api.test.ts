@@ -14,8 +14,10 @@ import {
   searchCatalogProducts,
   quoteOrder,
   submitOrder,
+  submitQuote,
   getProduct,
-  getErrorMessage
+  getErrorMessage,
+  getFieldError
 } from '../api';
 import { makeQuote, m2Product } from '../../test/fixtures';
 
@@ -143,6 +145,59 @@ describe('catalog api', () => {
       expect(getErrorMessage(caught, 'fallback')).toBe(
         'No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos.'
       );
+    });
+  });
+  describe('submitQuote', () => {
+    const request = {
+      quoteNumber: 4,
+      customer: { name: 'Lucía Ferrer', email: 'lucia@example.com', phone: '600 123 456' },
+      reference: 'Obra Calle Mayor',
+      privacyAccepted: true as const,
+      lines: [{ productId: 'p_ud', quantity: 12 }]
+    };
+
+    test('posts the quote to the quote submit endpoint and returns the result', async () => {
+      const result = { quoteNumber: 4, quote: makeQuote(), emails: { customer: 'sent' } };
+      post.mockResolvedValue(ok(result));
+
+      await expect(submitQuote(request)).resolves.toEqual(result);
+      expect(post).toHaveBeenCalledWith('/api/quotes/submit', request);
+    });
+
+    test('throws when the API reports failure', async () => {
+      post.mockResolvedValue({ data: { success: false, timestamp: 'x' } });
+      await expect(submitQuote(request)).rejects.toThrow();
+    });
+  });
+
+  describe('getFieldError', () => {
+    const validationError = (fieldErrors: Record<string, string[]>) =>
+      Object.assign(new Error('Request failed'), {
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Request validation failed',
+              details: { formErrors: [], fieldErrors }
+            }
+          }
+        }
+      });
+
+    test('returns the first message of a field from a validation error', () => {
+      const error = validationError({
+        reference: ['La referencia no puede superar 80 caracteres']
+      });
+      expect(getFieldError(error, 'reference')).toBe(
+        'La referencia no puede superar 80 caracteres'
+      );
+    });
+
+    test('returns undefined for another field or a non validation error', () => {
+      expect(getFieldError(validationError({ phone: ['x'] }), 'reference')).toBeUndefined();
+      expect(getFieldError(new Error('boom'), 'reference')).toBeUndefined();
     });
   });
 });
