@@ -174,6 +174,12 @@ export type OrderLine = OrderBoardLine | OrderQuantityLine;
 // Quote and order histories (localStorage)
 export type HistoryKind = 'quote' | 'order';
 
+/** Router state on "/" asking the order manager to load a saved entry. */
+export interface ReorderRequest {
+  reorder: number;
+  kind: HistoryKind;
+}
+
 export interface HistoryLine {
   productId: string;
   name: string;

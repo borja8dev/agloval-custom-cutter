@@ -12,14 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An optional `reference` (up to 80 characters) on order and quote submissions, shown as "Referencia: …" in the emails and appended to the Agloval subject.
 - An optional `fromQuoteNumber` on order submissions, shown as "Desde el presupuesto nº M" in both order emails.
 - Quote and order histories and the customer session now stay in sync across open browser tabs.
+- History pages: `/presupuestos` and `/pedidos`, linked from the header as "Presupuestos" and "Pedidos". Each lists its entries with date, customer, reference, total and state ("Convertido en pedido nº M", "Desde presupuesto nº M"), and can be searched by number, customer or reference (ignoring case and accents). "Repetir" loads an entry back into the order manager.
+- A "Esta página no existe" page for unknown addresses, and an SPA rewrite in `vercel.json` so the new routes load when opened directly.
 
 ### Changed
 - Quotes and orders are kept in separate browser histories (up to 200 each); the existing order history moves automatically to the new format, keeping its numbering. Confirmed orders now also remember the customer's details.
+- The history opens in its own browser tab instead of a window over the order manager. The logo and "Gestor de pedidos" in the header link back to the order manager, and the customer greeting is shown on every page.
 
 ### Fixed
 - Emails use the singular for one item: "1 pieza", "1 tablero", "1 barra".
 
 ### Removed
+- The "Historial (N)" button and the history window (replaced by the history pages).
 
 ### Security
 

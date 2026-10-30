@@ -6,10 +6,10 @@ React 18 application with TypeScript for the Gestor de pedidos (Agloval) order m
 
 ```
 src/
-├── pages/           # Page components (CuttingCalculator)
+├── pages/           # Route pages (CuttingCalculator, HistoryPage for quotes and orders)
 ├── components/      # Reusable UI components
 ├── hooks/           # State management lives here (useFamilies, useProducts, useOrder,
-│                     # useOrderQuote, useOrderHistory, useLocalStorage) — no Context/Redux
+│                     # useOrderQuote, useHistory, useLocalStorage) — no Context/Redux
 ├── services/        # API communication (api.ts) + export/share (export.ts)
 ├── utils/           # Formatters
 ├── styles/          # Tailwind and global styles
@@ -24,6 +24,19 @@ npm run dev
 ```
 
 The app runs on port 3000 by default. See `.env.example` for configuration.
+
+### Routes
+
+`App.tsx` is the shared layout (header, content, footer) with `react-router-dom`:
+
+| Path | Page |
+|------|------|
+| `/` | Order manager (`CuttingCalculator`) |
+| `/presupuestos` | Quote history, with search by number, customer or reference |
+| `/pedidos` | Order history, with the same search |
+| anything else | "Esta página no existe" with a link back to `/` |
+
+The header links "Presupuestos" and "Pedidos" open the histories in a new tab, so the order being built is never replaced by accident. "Repetir" on a history entry goes to `/` with the router state `{ reorder: <number>, kind: 'quote' | 'order' }`; the order manager loads that entry once and clears the state.
 
 ## Testing
 

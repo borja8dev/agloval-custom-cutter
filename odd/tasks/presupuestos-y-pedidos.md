@@ -22,7 +22,7 @@ Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1
 - [x] **T16** Headings without "1. 2. 3."; product name shown once in the order panel (`QuoteGroupList` `showProductName`). Route: inline (2 small files + tests).
 - [x] **T17** Backend: `POST /api/quotes/submit`, optional `reference`, `fromQuoteNumber`, singular/plural in emails, shared rate limit, docs. Route: delegated writer (many files).
 - [x] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
-- [ ] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
+- [x] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
 - [ ] **T20** Quote → order flow: "Guardar presupuesto", reference field, "Pasar a pedido" with price-change notice, "Repetir". Route: delegated writer.
 - [ ] **T21** Cypress: adapt history specs, stubbed quote flow, Mailpit spec for quote and conversion. Route: delegated writer.
 - [ ] **Release v1.4.0**
@@ -45,5 +45,7 @@ Backend: `npm test`, `tsc`, lint. Frontend: `npm test -- --run`, build, lint. Cy
 - **T18** done (delegated writer; paused by the user on 2026-10-29 and resumed on 2026-10-30). Branch `feat/history-repository`. Writer RED→GREEN: history utils 18/27 failing first, repository, hooks, `useLocalStorage` storage sync, calculator storing the customer. Parent spot check: frontend 28 files / 289 tests, `tsc` ok. Live migration in the browser: the v2 order nº 1 (85,94 €) moved to v3 as `kind: 'order'`, v2 removed, counter kept.
 - CI only runs on PRs to `main`, so the DB suites of T17 run when the chain merges.
 
+- **T19** done (delegated writer). Branch `feat/history-pages`. Writer RED→GREEN: 17 failing tests first (routing, header nav, titles, search, router-state reorder). Parent spot check: frontend 30 files / 311 tests; full Cypress against the real backend 45 passed, 1 skipped (Mailpit spec, opt-in); `/pedidos` checked in the browser.
+
 ## Next step
-T19 routes and history pages.
+T20 quote → order flow.

@@ -19,9 +19,12 @@ declare global {
       addQuantity(quantity: number): Chainable<void>
       /** Yields the order total in integer cents. */
       orderTotal(): Chainable<number>
-      /** Opens the history window from the header and yields the dialog. */
-      openHistory(): Chainable<JQuery<HTMLElement>>
-      /** Closes the history window with its close button. */
+      /**
+       * Visits a history page in the same tab (Cypress cannot follow the header's
+       * target="_blank" links) and yields its main region.
+       */
+      openHistory(kind?: 'quote' | 'order'): Chainable<JQuery<HTMLElement>>
+      /** Goes back to the order manager on "/" and waits for its data. */
       closeHistory(): Chainable<void>
       /**
        * Confirms the current order: fills "Tus datos" with test data and submits it. The
@@ -112,14 +115,27 @@ Cypress.Commands.add('orderTotal', () =>
     .then((text) => parseCents(text))
 )
 
-Cypress.Commands.add('openHistory', () => {
-  cy.contains('header button[aria-haspopup="dialog"]', /^Historial \(\d+\)$/).click()
-  return cy.get('[role="dialog"][aria-labelledby]').should('be.visible').and('contain', 'Historial de pedidos')
+const HISTORY_PAGES = {
+  quote: { path: '/presupuestos', link: 'Presupuestos', title: 'Historial de presupuestos' },
+  order: { path: '/pedidos', link: 'Pedidos', title: 'Historial de pedidos' },
+} as const
+
+Cypress.Commands.add('openHistory', (kind: 'quote' | 'order' = 'order') => {
+  const page = HISTORY_PAGES[kind]
+  cy.contains('header nav a', page.link)
+    .should('have.attr', 'href', page.path)
+    .and('have.attr', 'target', '_blank')
+  // localStorage survives a same-origin visit, so the saved history is still there.
+  cy.visit(page.path)
+  cy.contains('main h2', page.title).should('be.visible')
+  return cy.get('main')
 })
 
 Cypress.Commands.add('closeHistory', () => {
-  cy.get('[role="dialog"]').find('button[aria-label="Cerrar"]').click()
-  cy.get('[role="dialog"]').should('not.exist')
+  cy.contains('header a', 'Gestor de pedidos').click()
+  cy.wait('@families')
+  cy.wait('@products')
+  cy.contains('h2', 'Selecciona producto').should('be.visible')
 })
 
 Cypress.Commands.add('confirmOrder', () => {

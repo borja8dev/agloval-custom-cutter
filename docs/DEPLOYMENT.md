@@ -58,6 +58,8 @@ Both platforms auto-deploy on push to `main` once the project is connected throu
 
 1. In the Vercel dashboard: **Add New → Project**, import the repo.
 2. Leave the project's Root Directory at the repo root (do **not** set it to `frontend`) — the root `vercel.json` already declares `buildCommand` (`cd frontend && npm install && npm run build`) and `outputDirectory` (`frontend/dist`) relative to the repo root. Setting a dashboard Root Directory too would double up the path and break the build.
+
+   It also declares an SPA rewrite (`"source": "/(.*)"` → `/index.html`), so client routes such as `/presupuestos` and `/pedidos` load the app when opened directly or reloaded instead of returning a 404. Real files in `dist/` (scripts, styles, the logo) are still served as they are. The rewrite is safe because the API lives on Render under its own domain, not on this Vercel deployment.
 3. Environment variable:
    ```
    VITE_API_URL=https://<your-backend>.onrender.com
@@ -75,6 +77,9 @@ curl https://<your-backend>.onrender.com/health
 
 # Frontend loads
 curl -I https://<your-frontend>.vercel.app
+
+# SPA routes are rewritten to the app (expect 200, not 404)
+curl -I https://<your-frontend>.vercel.app/pedidos
 ```
 
 Then, manually: open the frontend, pick a product, add pieces, confirm a calculation returns a price and CORS doesn't block the request (check the browser console).

@@ -18,7 +18,8 @@ describe('Product selection', () => {
     })
     cy.get('section[aria-labelledby="block-products"]').should('exist')
     cy.get('section[aria-labelledby="block-history"]').should('not.exist')
-    cy.contains('header button', 'Historial (0)').should('be.visible')
+    cy.contains('header nav a', 'Presupuestos').should('be.visible')
+    cy.contains('header nav a', 'Pedidos').should('be.visible')
   })
 
   it('lists the families with their product counts', () => {
