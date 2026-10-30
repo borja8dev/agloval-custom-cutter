@@ -4,6 +4,8 @@ import { formatDecimal } from '../utils/formatters';
 
 interface QuoteGroupListProps {
   groups: QuoteGroup[];
+  /** Off when the caller already shows the product name above the list. */
+  showProductName?: boolean;
 }
 
 const money = (value: number) => `${formatDecimal(value)} EUR`;
@@ -11,7 +13,10 @@ const money = (value: number) => `${formatDecimal(value)} EUR`;
 const boardCount = (group: QuoteBoardGroup) =>
   `${group.boardsNeeded} ${group.boardsNeeded === 1 ? 'tablero' : 'tableros'}`;
 
-const BoardDetails: React.FC<{ group: QuoteBoardGroup }> = ({ group }) => {
+const BoardDetails: React.FC<{ group: QuoteBoardGroup; showProductName: boolean }> = ({
+  group,
+  showProductName,
+}) => {
   const { product } = group;
   const boardType = [
     product.name,
@@ -30,7 +35,8 @@ const BoardDetails: React.FC<{ group: QuoteBoardGroup }> = ({ group }) => {
 
   return (
     <>
-      <p className="text-gray-600">{boardType}</p>
+      {/* The board type repeats the name and size, so it only helps when the name is shown. */}
+      {showProductName && <p className="text-gray-600">{boardType}</p>}
       <p className="text-gray-600">
         {formatDecimal(group.usedAreaM2)} m² usados · {boardCount(group)}
         {boardSize}
@@ -58,7 +64,10 @@ const LinearDetails: React.FC<{ group: QuoteLinearGroup }> = ({ group }) => (
   </p>
 );
 
-export const QuoteGroupList: React.FC<QuoteGroupListProps> = ({ groups }) => {
+export const QuoteGroupList: React.FC<QuoteGroupListProps> = ({
+  groups,
+  showProductName = true,
+}) => {
   if (groups.length === 0) {
     return null;
   }
@@ -71,8 +80,10 @@ export const QuoteGroupList: React.FC<QuoteGroupListProps> = ({ groups }) => {
           data-testid="quote-group"
           className="text-sm bg-gray-50 rounded-md p-2"
         >
-          <p className="font-medium text-gray-900">{group.product.name}</p>
-          {group.kind === 'BOARD' && <BoardDetails group={group} />}
+          {showProductName && <p className="font-medium text-gray-900">{group.product.name}</p>}
+          {group.kind === 'BOARD' && (
+            <BoardDetails group={group} showProductName={showProductName} />
+          )}
           {group.kind === 'UNIT' && <UnitDetails group={group} />}
           {group.kind === 'LINEAR' && <LinearDetails group={group} />}
         </li>
