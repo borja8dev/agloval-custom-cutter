@@ -171,7 +171,9 @@ export interface OrderQuantityLine {
 
 export type OrderLine = OrderBoardLine | OrderQuantityLine;
 
-// Order history (localStorage)
+// Quote and order histories (localStorage)
+export type HistoryKind = 'quote' | 'order';
+
 export interface HistoryLine {
   productId: string;
   name: string;
@@ -181,11 +183,18 @@ export interface HistoryLine {
   quantity?: number;
 }
 
-export interface OrderHistoryEntry {
+export interface HistoryEntry {
+  kind: HistoryKind;
   number: number;
   createdAt: string;
   total: number;
   currency: string;
   lines: HistoryLine[];
   groups: QuoteGroup[];
+  customer?: Customer;
+  reference?: string;
+  /** On an order: the quote it was created from. */
+  fromQuoteNumber?: number;
+  /** On a quote: the order it became. */
+  convertedToOrder?: number;
 }

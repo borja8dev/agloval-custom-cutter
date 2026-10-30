@@ -19,7 +19,7 @@ import { Modal } from '../components/Modal';
 import { OrderBar } from '../components/OrderBar';
 import { CustomerDetailsForm } from '../components/CustomerDetailsForm';
 import { formatDecimal } from '../utils/formatters';
-import type { CatalogProduct, Customer, OrderHistoryEntry } from '../types';
+import type { CatalogProduct, Customer, HistoryEntry } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -58,7 +58,8 @@ export const CuttingCalculator: React.FC = () => {
 
   const order = useOrder();
   const { quote, isLoading: isQuoting, error: quoteError } = useOrderQuote(order.toQuoteRequest());
-  const { history, addOrder, removeOrder, clearHistory, nextNumber } = useOrderHistory();
+  const orderHistory = useOrderHistory();
+  const nextNumber = orderHistory.nextNumber;
   const session = useCustomerSession();
   const orderHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -92,7 +93,7 @@ export const CuttingCalculator: React.FC = () => {
         lines: order.toQuoteRequest().lines,
       });
       session.save(details);
-      addOrder(confirmedQuote, lines);
+      orderHistory.add(confirmedQuote, lines, { customer: details });
       order.clear();
       setDetailsOpen(false);
       setOrderStatus({
@@ -112,7 +113,7 @@ export const CuttingCalculator: React.FC = () => {
     heading?.focus({ preventScroll: true });
   };
 
-  const handleReorder = async (entry: OrderHistoryEntry) => {
+  const handleReorder = async (entry: HistoryEntry) => {
     if (isReordering) return;
     setIsReordering(true);
     setOrderStatus(null);
@@ -153,7 +154,7 @@ export const CuttingCalculator: React.FC = () => {
               onClick={() => setHistoryOpen(true)}
               className={headerPillClass}
             >
-              Historial ({history.length})
+              Historial ({orderHistory.entries.length})
             </button>
             {session.customer && (
               <div className="flex items-center gap-2 bg-white text-brand-dark rounded-full pl-4 pr-1 py-1 text-sm">
@@ -275,10 +276,10 @@ export const CuttingCalculator: React.FC = () => {
         size="lg"
       >
         <OrderHistory
-          history={history}
+          history={orderHistory.entries}
           onReorder={handleReorder}
-          onRemove={removeOrder}
-          onClear={clearHistory}
+          onRemove={orderHistory.remove}
+          onClear={orderHistory.clear}
           isReordering={isReordering}
           hideTitle
         />
