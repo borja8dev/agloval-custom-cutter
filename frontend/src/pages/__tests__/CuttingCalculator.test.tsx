@@ -249,6 +249,9 @@ describe('CuttingCalculator page', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toHaveTextContent('Pedido #1');
     expect(within(dialog).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
+
+    const stored = JSON.parse(localStorage.getItem('agloval_order_history_v3')!);
+    expect(stored.entries[0]).toMatchObject({ kind: 'order', number: 1, customer: lucia });
   });
 
   test('a failed submission keeps the order and the window open and shows the server message', async () => {

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import type { OrderHistoryEntry } from '../types';
+import type { HistoryEntry } from '../types';
 import { formatDate, formatDecimal } from '../utils/formatters';
 import { QuoteGroupList } from './QuoteGroupList';
 
 interface OrderHistoryProps {
-  history: OrderHistoryEntry[];
-  onReorder: (entry: OrderHistoryEntry) => void;
+  history: HistoryEntry[];
+  onReorder: (entry: HistoryEntry) => void;
   onRemove: (number: number) => void;
   onClear: () => void;
   status?: { kind: 'success' | 'warning'; message: string } | null;
@@ -20,8 +20,8 @@ const statusStyles = {
 };
 
 const HistoryRow: React.FC<{
-  entry: OrderHistoryEntry;
-  onReorder: (entry: OrderHistoryEntry) => void;
+  entry: HistoryEntry;
+  onReorder: (entry: HistoryEntry) => void;
   onRemove: (number: number) => void;
   isReordering: boolean;
 }> = ({ entry, onReorder, onRemove, isReordering }) => {

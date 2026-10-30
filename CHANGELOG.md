@@ -11,8 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `POST /api/quotes/submit`: prices a quote again on the server and emails it to the customer only ("Tu presupuesto · Presupuesto nº N"); Agloval is never emailed for a quote. It shares the per-IP limit of `POST /api/orders/submit` (5 submissions of either kind per 10 minutes).
 - An optional `reference` (up to 80 characters) on order and quote submissions, shown as "Referencia: …" in the emails and appended to the Agloval subject.
 - An optional `fromQuoteNumber` on order submissions, shown as "Desde el presupuesto nº M" in both order emails.
+- Quote and order histories and the customer session now stay in sync across open browser tabs.
 
 ### Changed
+- Quotes and orders are kept in separate browser histories (up to 200 each); the existing order history moves automatically to the new format, keeping its numbering. Confirmed orders now also remember the customer's details.
 
 ### Fixed
 - Emails use the singular for one item: "1 pieza", "1 tablero", "1 barra".

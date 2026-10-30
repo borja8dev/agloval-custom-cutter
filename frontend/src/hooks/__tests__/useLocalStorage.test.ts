@@ -32,6 +32,30 @@ describe('useLocalStorage Hook', () => {
     setItemSpy.mockRestore();
   });
 
+  test('should follow changes made to its key in another tab', async () => {
+    const { result } = renderHook(() => useLocalStorage<string[]>('test-key', []));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => {
+      localStorage.setItem('other-key', JSON.stringify(['ignored']));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'other-key' }));
+    });
+    expect(result.current.data).toEqual([]);
+
+    act(() => {
+      localStorage.setItem('test-key', JSON.stringify(['from other tab']));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'test-key' }));
+    });
+    expect(result.current.data).toEqual(['from other tab']);
+
+    // Removed (or whole storage cleared) elsewhere: back to the initial value.
+    act(() => {
+      localStorage.removeItem('test-key');
+      window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    });
+    expect(result.current.data).toEqual([]);
+  });
+
   test('should persist updates via setData', async () => {
     const { result } = renderHook(() => useLocalStorage<string[]>('test-key', []));
 

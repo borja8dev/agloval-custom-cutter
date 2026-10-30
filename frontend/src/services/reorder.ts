@@ -1,4 +1,4 @@
-import type { CatalogProduct, OrderHistoryEntry, OrderLine } from '../types';
+import type { CatalogProduct, HistoryEntry, OrderLine } from '../types';
 import { getProduct } from './api';
 import { createLineId } from '../utils/order';
 
@@ -13,7 +13,7 @@ export interface ReorderResult {
 // Rebuilds the order lines of a past order with the CURRENT products, so the
 // next quote uses current prices.
 export async function reorderFromHistory(
-  entry: OrderHistoryEntry,
+  entry: HistoryEntry,
   fetchProduct: FetchProduct = (id) => getProduct<CatalogProduct>(id)
 ): Promise<ReorderResult> {
   const ids = [...new Set(entry.lines.map((l) => l.productId))];

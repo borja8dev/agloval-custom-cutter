@@ -21,7 +21,7 @@ Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1
 ## Tasks
 - [x] **T16** Headings without "1. 2. 3."; product name shown once in the order panel (`QuoteGroupList` `showProductName`). Route: inline (2 small files + tests).
 - [x] **T17** Backend: `POST /api/quotes/submit`, optional `reference`, `fromQuoteNumber`, singular/plural in emails, shared rate limit, docs. Route: delegated writer (many files).
-- [ ] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
+- [x] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
 - [ ] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
 - [ ] **T20** Quote → order flow: "Guardar presupuesto", reference field, "Pasar a pedido" with price-change notice, "Repetir". Route: delegated writer.
 - [ ] **T21** Cypress: adapt history specs, stubbed quote flow, Mailpit spec for quote and conversion. Route: delegated writer.
@@ -42,5 +42,8 @@ Backend: `npm test`, `tsc`, lint. Frontend: `npm test -- --run`, build, lint. Cy
 - **T16** done (inline). Commit `3a9cf35`, PR #24. RED→GREEN: new `QuoteGroupList` "can leave out the product name" and `OrderSummary` "names each product once" tests; heading expectations. Frontend 26 files / 263 tests; Cypress cutting-calculator, product-selection, responsive, history 43/43; CI green.
 - **T17** done (delegated writer; trigger: 2+ non-trivial backend files). PR `feat/quote-submission`. Writer RED→GREEN on emails, schemas, services, controllers. Parent spot check: `tsc` ok, lint ok, non-DB suites 29 passed / 407 tests. The 3 DB suites need `DATABASE_URL_TEST`, which this worktree does not expose: verified by CI. Live check against Mailpit: a quote sends only "Tu presupuesto · Presupuesto nº 1" to the customer; an order with `fromQuoteNumber` and a `<…>` reference sends both emails, escaped in HTML, with "1 tablero".
 
+- **T18** done (delegated writer; paused by the user on 2026-10-29 and resumed on 2026-10-30). Branch `feat/history-repository`. Writer RED→GREEN: history utils 18/27 failing first, repository, hooks, `useLocalStorage` storage sync, calculator storing the customer. Parent spot check: frontend 28 files / 289 tests, `tsc` ok. Live migration in the browser: the v2 order nº 1 (85,94 €) moved to v3 as `kind: 'order'`, v2 removed, counter kept.
+- CI only runs on PRs to `main`, so the DB suites of T17 run when the chain merges.
+
 ## Next step
-T18 history data layer.
+T19 routes and history pages.

@@ -3,9 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OrderHistory } from '../OrderHistory';
 import { makeQuote } from '../../test/fixtures';
-import type { OrderHistoryEntry } from '../../types';
+import type { HistoryEntry } from '../../types';
 
-const entry = (number: number, overrides: Partial<OrderHistoryEntry> = {}): OrderHistoryEntry => ({
+const entry = (number: number, overrides: Partial<HistoryEntry> = {}): HistoryEntry => ({
+  kind: 'order',
   number,
   createdAt: `2026-10-0${number}T10:30:00.000Z`,
   total: 4.2,

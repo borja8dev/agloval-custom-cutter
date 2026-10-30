@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest';
 import { reorderFromHistory } from '../reorder';
-import { appendOrder, EMPTY_HISTORY } from '../../utils/orderHistory';
+import { appendEntry, EMPTY_HISTORY } from '../../utils/history';
 import { makeProduct, makeQuote, sampleLines, m2Product, udProduct } from '../../test/fixtures';
 import { isBoardLine } from '../../utils/order';
 
-const entry = appendOrder(EMPTY_HISTORY, makeQuote(), sampleLines).orders[0];
+const entry = appendEntry(EMPTY_HISTORY, 'order', makeQuote(), sampleLines).entries[0];
 
 describe('reorderFromHistory', () => {
   test('rebuilds lines with the current product objects', async () => {
