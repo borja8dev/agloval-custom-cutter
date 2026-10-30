@@ -120,7 +120,7 @@ agloval-custom-cutter/
 ├── README.md                    # This file
 ├── frontend/                    # React application
 │   ├── src/
-│   │   ├── pages/               # Page components (CuttingCalculator)
+│   │   ├── pages/               # Route pages: / (CuttingCalculator), /presupuestos and /pedidos (HistoryPage)
 │   │   ├── components/          # Reusable components
 │   │   ├── hooks/                # State management (useProducts, useCalculation, useCalculationHistory, useLocalStorage)
 │   │   ├── services/            # API client (api.ts) + export/share (export.ts)

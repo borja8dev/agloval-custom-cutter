@@ -1,25 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useFamilies } from '../hooks/useFamilies';
 import { useProducts } from '../hooks/useProducts';
 import { useOrder } from '../hooks/useOrder';
 import { useOrderQuote } from '../hooks/useOrderQuote';
 import { useOrderHistory } from '../hooks/useOrderHistory';
-import { useCustomerSession } from '../hooks/useCustomerSession';
+import { useQuoteHistory } from '../hooks/useQuoteHistory';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import type { UseCustomerSessionReturn } from '../hooks/useCustomerSession';
 import { reorderFromHistory } from '../services/reorder';
 import { getErrorMessage, submitOrder } from '../services/api';
 import { FamilySelect } from '../components/FamilySelect';
 import { ProductList } from '../components/ProductList';
 import { OrderLineForm } from '../components/OrderLineForm';
 import { OrderSummary } from '../components/OrderSummary';
-import { OrderHistory } from '../components/OrderHistory';
 import { ExportButton } from '../components/ExportButton';
 import { Alert } from '../components/Alert';
-import { AppHeader } from '../components/AppHeader';
 import { Modal } from '../components/Modal';
 import { OrderBar } from '../components/OrderBar';
 import { CustomerDetailsForm } from '../components/CustomerDetailsForm';
 import { formatDecimal } from '../utils/formatters';
-import type { CatalogProduct, Customer, HistoryEntry } from '../types';
+import type { CatalogProduct, Customer, HistoryEntry, ReorderRequest } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -31,19 +32,28 @@ const statusClass = {
   success: 'bg-green-50 text-green-800 border-green-200',
   warning: 'bg-yellow-50 text-yellow-800 border-yellow-200',
 };
-const headerPillClass =
-  'bg-white text-brand-dark font-semibold rounded-full px-4 py-2 text-sm hover:bg-brand-light focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-header';
+const ENTRY_LABEL = { quote: 'Presupuesto', order: 'Pedido' } as const;
 
-const firstName = (name: string) => name.trim().split(/\s+/)[0];
+function toReorderRequest(state: unknown): ReorderRequest | null {
+  if (typeof state !== 'object' || state === null) return null;
+  const { reorder, kind } = state as Record<string, unknown>;
+  if (typeof reorder !== 'number' || (kind !== 'quote' && kind !== 'order')) return null;
+  return { reorder, kind };
+}
 
-export const CuttingCalculator: React.FC = () => {
+interface CuttingCalculatorProps {
+  /** Shared with the header, so the greeting updates as soon as an order is sent. */
+  session: UseCustomerSessionReturn;
+}
+
+export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session }) => {
+  useDocumentTitle('Gestor de pedidos · Agloval');
   const [family, setFamily] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
   const [isReordering, setIsReordering] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -59,9 +69,12 @@ export const CuttingCalculator: React.FC = () => {
   const order = useOrder();
   const { quote, isLoading: isQuoting, error: quoteError } = useOrderQuote(order.toQuoteRequest());
   const orderHistory = useOrderHistory();
+  const quoteHistory = useQuoteHistory();
   const nextNumber = orderHistory.nextNumber;
-  const session = useCustomerSession();
   const orderHeadingRef = useRef<HTMLHeadingElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const handledRequestKey = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
@@ -117,16 +130,16 @@ export const CuttingCalculator: React.FC = () => {
     if (isReordering) return;
     setIsReordering(true);
     setOrderStatus(null);
+    const label = `${ENTRY_LABEL[entry.kind]} #${entry.number}`;
     try {
       const { lines, missing } = await reorderFromHistory(entry);
       if (lines.length > 0) {
         order.replaceLines(lines);
       }
-      setHistoryOpen(false);
       if (missing.length === 0) {
         setOrderStatus({
           kind: 'success',
-          message: `Pedido #${entry.number} cargado en el pedido actual`,
+          message: `${label} cargado en el pedido actual`,
         });
       } else {
         const names = missing.join(', ');
@@ -134,8 +147,8 @@ export const CuttingCalculator: React.FC = () => {
           kind: 'warning',
           message:
             lines.length > 0
-              ? `Pedido #${entry.number} cargado, pero estos productos ya no existen: ${names}`
-              : `No se pudo cargar el pedido #${entry.number}: estos productos ya no existen: ${names}`,
+              ? `${label} cargado, pero estos productos ya no existen: ${names}`
+              : `No se pudo cargar el ${label.toLowerCase()}: estos productos ya no existen: ${names}`,
         });
       }
     } finally {
@@ -143,35 +156,22 @@ export const CuttingCalculator: React.FC = () => {
     }
   };
 
+  // A history page sends { reorder, kind } as router state; handle it once and clear it.
+  const reorderRequest = toReorderRequest(location.state);
+  useEffect(() => {
+    if (!reorderRequest || handledRequestKey.current === location.key) return;
+    handledRequestKey.current = location.key;
+    navigate('.', { replace: true, state: null });
+
+    const entries = reorderRequest.kind === 'quote' ? quoteHistory.entries : orderHistory.entries;
+    const entry = entries.find((e) => e.number === reorderRequest.reorder);
+    if (!entry) return;
+    if (order.lines.length > 0 && !window.confirm('¿Reemplazar el pedido actual?')) return;
+    void handleReorder(entry);
+  });
+
   return (
     <>
-      <AppHeader
-        actions={
-          <>
-            <button
-              type="button"
-              aria-haspopup="dialog"
-              onClick={() => setHistoryOpen(true)}
-              className={headerPillClass}
-            >
-              Historial ({orderHistory.entries.length})
-            </button>
-            {session.customer && (
-              <div className="flex items-center gap-2 bg-white text-brand-dark rounded-full pl-4 pr-1 py-1 text-sm">
-                <span className="font-semibold">Hola, {firstName(session.customer.name)}</span>
-                <button
-                  type="button"
-                  onClick={session.logout}
-                  className="rounded-full bg-brand-light px-3 py-1 font-medium hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
-          </>
-        }
-      />
-
       <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
         <div className="min-w-0 space-y-6">
           <section aria-labelledby="block-products" className={cardClass}>
@@ -268,22 +268,6 @@ export const CuttingCalculator: React.FC = () => {
           onShowOrder={showOrder}
         />
       )}
-
-      <Modal
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        title="Historial de pedidos"
-        size="lg"
-      >
-        <OrderHistory
-          history={orderHistory.entries}
-          onReorder={handleReorder}
-          onRemove={orderHistory.remove}
-          onClear={orderHistory.clear}
-          isReordering={isReordering}
-          hideTitle
-        />
-      </Modal>
 
       <Modal open={detailsOpen} onClose={closeDetails} title="Tus datos">
         <CustomerDetailsForm

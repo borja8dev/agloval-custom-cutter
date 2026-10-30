@@ -4,7 +4,7 @@ import { useLocalStorage } from './useLocalStorage';
 
 export const CUSTOMER_SESSION_KEY = 'agloval_customer_v1';
 
-interface UseCustomerSessionReturn {
+export interface UseCustomerSessionReturn {
   customer: Customer | null;
   save: (customer: Customer) => void;
   logout: () => void;

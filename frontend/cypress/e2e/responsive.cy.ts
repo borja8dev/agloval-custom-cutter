@@ -71,7 +71,7 @@ describe('Responsive layout', () => {
         cy.get('[data-testid="add-line-btn"]').should(($btn) => expectMinHeight($btn, 40))
       })
 
-      it('keeps the total visible with a long order and scrolls the order and the history window', () => {
+      it('keeps the total visible with a long order and scrolls the order and fits the history page', () => {
         cy.pickProduct(SUPERPAN)
         for (let i = 0; i < 8; i++) {
           cy.addBoardPiece(20 + i * 10, 30 + i * 5, 2)
@@ -89,20 +89,16 @@ describe('Responsive layout', () => {
         expectInViewport('[data-testid="order-total"]')
         cy.contains('button', 'Confirmar pedido').should('be.visible')
 
-        // Several saved orders make the history overflow its own container.
+        // Several saved orders fit the history page without horizontal scroll.
         cy.confirmOrder()
-        cy.contains('header button', 'Historial (1)').should('exist')
+        cy.get('[role="status"]').should('contain', 'Pedido nº 1 enviado')
         for (let i = 0; i < 6; i++) {
           cy.addQuantity(i + 1)
           cy.confirmOrder()
-          cy.contains('header button', `Historial (${i + 2})`).should('exist')
+          cy.get('[role="status"]').should('contain', `Pedido nº ${i + 2} enviado`)
         }
         cy.openHistory()
         cy.get('[data-testid="history-entry"]').should('have.length', 7)
-        expectScrollContainer('[data-testid="order-history"]')
-        cy.get('[data-testid="order-history"]').should(($el) => {
-          expect($el[0].scrollHeight).to.be.greaterThan($el[0].clientHeight)
-        })
         expectNoHorizontalScroll()
       })
 

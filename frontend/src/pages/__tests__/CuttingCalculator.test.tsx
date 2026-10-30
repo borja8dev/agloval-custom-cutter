@@ -20,9 +20,19 @@ import {
   searchCatalogProducts,
   submitOrder,
 } from '../../services/api';
-import { CuttingCalculator } from '../CuttingCalculator';
+import { MemoryRouter, useLocation, useNavigate, type MemoryRouterProps } from 'react-router-dom';
+
+type InitialEntry = NonNullable<MemoryRouterProps['initialEntries']>[number];
+import { App } from '../../App';
+import { HISTORY_KEYS } from '../../services/history';
 import { makeQuote, m2Product, mlProduct, udProduct } from '../../test/fixtures';
-import type { CatalogProduct, Family, ProductListParams } from '../../types';
+import type {
+  CatalogProduct,
+  Family,
+  HistoryEntry,
+  HistoryKind,
+  ProductListParams,
+} from '../../types';
 
 const families: Family[] = [
   { code: 'MEL', name: 'Melamina', productCount: 1, units: { UD: 0, M2: 1, ML: 0 } },
@@ -61,12 +71,67 @@ function resetMocks() {
   });
 }
 
-async function renderPage() {
+// Test-only controls: navigate to "/" with a reorder request, and read the router state.
+const RouterProbe = ({ request }: { request?: { reorder: number; kind: HistoryKind } }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <div>
+      {request && (
+        <button type="button" onClick={() => navigate('/', { state: request })}>
+          probe-reorder
+        </button>
+      )}
+      <output data-testid="router-state">{JSON.stringify(location.state ?? null)}</output>
+    </div>
+  );
+};
+
+function renderApp(entry: InitialEntry = '/', request?: { reorder: number; kind: HistoryKind }) {
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <App />
+      <RouterProbe request={request} />
+    </MemoryRouter>
+  );
+}
+
+async function renderPage(
+  entry: InitialEntry = '/',
+  request?: { reorder: number; kind: HistoryKind }
+) {
   const user = userEvent.setup();
-  render(<CuttingCalculator />);
+  renderApp(entry, request);
   await screen.findByText(m2Product.name);
   return user;
 }
+
+const pastEntry = (kind: HistoryKind, number: number): HistoryEntry => ({
+  kind,
+  number,
+  createdAt: '2026-10-01T10:30:00.000Z',
+  total: 123.45,
+  currency: 'EUR',
+  lines: [
+    {
+      productId: m2Product.id,
+      name: m2Product.name,
+      sku: m2Product.sku,
+      unit: 'M2',
+      pieces: [{ width: 100, height: 80, quantity: 20 }],
+    },
+    { productId: udProduct.id, name: udProduct.name, sku: udProduct.sku, unit: 'UD', quantity: 12 },
+  ],
+  groups: makeQuote().groups,
+});
+
+function seedHistory(kind: HistoryKind, entries: HistoryEntry[]) {
+  localStorage.setItem(HISTORY_KEYS[kind], JSON.stringify({ counter: entries.length, entries }));
+}
+
+const storedOrders = () =>
+  JSON.parse(localStorage.getItem(HISTORY_KEYS.order) ?? '{"entries":[]}')
+    .entries as HistoryEntry[];
 
 async function pickProduct(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(within(screen.getByTestId('product-list')).getByText(name));
@@ -111,11 +176,6 @@ async function confirmOrder(user: ReturnType<typeof userEvent.setup>, customer =
 const sentMessage = (number: number, email = lucia.email) =>
   `Pedido nº ${number} enviado. Te hemos mandado el presupuesto a ${email}.`;
 
-async function openHistory(user: ReturnType<typeof userEvent.setup>, count: number) {
-  await user.click(screen.getByRole('button', { name: `Historial (${count})` }));
-  return screen.getByRole('dialog', { name: 'Historial de pedidos' });
-}
-
 describe('CuttingCalculator page', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -128,21 +188,23 @@ describe('CuttingCalculator page', () => {
     resetMocks();
   });
 
-  test('shows the three blocks in order with their headings and a history button', async () => {
+  test('shows the three blocks in order with their headings and no history window', async () => {
     await renderPage();
+    expect(document.title).toBe('Gestor de pedidos · Agloval');
 
     const titles = screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent);
     expect(titles).toEqual(['Gestor de pedidos']);
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual([
-      'Selecciona producto',
-      'Medidas y cantidad',
-      'Pedido actual',
-    ]);
+    expect(headings).toEqual(['Selecciona producto', 'Medidas y cantidad', 'Pedido actual']);
     expect(screen.getAllByRole('region')).toHaveLength(3);
-    const historyButton = screen.getByRole('button', { name: 'Historial (0)' });
-    expect(historyButton).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(screen.getByRole('banner')).toContainElement(historyButton);
+    expect(screen.queryByRole('button', { name: /Historial/ })).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-haspopup="dialog"]')).toBeNull();
+    const banner = within(screen.getByRole('banner'));
+    expect(banner.getByRole('link', { name: 'Presupuestos' })).toHaveAttribute(
+      'href',
+      '/presupuestos'
+    );
+    expect(banner.getByRole('link', { name: 'Pedidos' })).toHaveAttribute('href', '/pedidos');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -221,7 +283,7 @@ describe('CuttingCalculator page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('order-line')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Historial (0)' })).toBeInTheDocument();
+    expect(storedOrders()).toHaveLength(0);
   });
 
   test('submitting the details sends the order, saves Pedido #1, clears it and greets the customer', async () => {
@@ -244,14 +306,9 @@ describe('CuttingCalculator page', () => {
     expect(banner.getByText('Hola, Lucía')).toBeInTheDocument();
     expect(banner.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
 
-    const dialog = await openHistory(user, 1);
-    const entries = within(dialog).getAllByTestId('history-entry');
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toHaveTextContent('Pedido #1');
-    expect(within(dialog).queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
-
-    const stored = JSON.parse(localStorage.getItem('agloval_order_history_v3')!);
-    expect(stored.entries[0]).toMatchObject({ kind: 'order', number: 1, customer: lucia });
+    const stored = storedOrders();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ kind: 'order', number: 1, customer: lucia });
   });
 
   test('a failed submission keeps the order and the window open and shows the server message', async () => {
@@ -275,7 +332,7 @@ describe('CuttingCalculator page', () => {
     expect(screen.getByRole('dialog', { name: 'Tus datos' })).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Enviar pedido' })).toBeEnabled();
     expect(screen.getAllByTestId('order-line')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Historial (0)' })).toBeInTheDocument();
+    expect(storedOrders()).toHaveLength(0);
     expect(screen.queryByText(/Hola,/)).not.toBeInTheDocument();
   });
 
@@ -318,7 +375,7 @@ describe('CuttingCalculator page', () => {
 
     expect(screen.queryByText('Hola, Lucía')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Historial (1)' })).toBeInTheDocument();
+    expect(storedOrders()).toHaveLength(1);
     expect(localStorage.getItem('agloval_customer_v1')).toBe('null');
   });
 
@@ -340,39 +397,74 @@ describe('CuttingCalculator page', () => {
     expect(dialog.getByLabelText('Teléfono')).toHaveValue(lucia.phone);
   });
 
-  test('"Volver a pedir" closes the history window and reloads the lines of a past order', async () => {
-    const user = await renderPage();
-    await addBoardPiece(user);
-    await addUnitLine(user);
-    await screen.findByText(/Total: 123,45 EUR/);
-    await confirmOrder(user);
-    await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
+  test('loads the lines of a past order requested through the router state', async () => {
+    seedHistory('order', [pastEntry('order', 1)]);
+    await renderPage({ pathname: '/', state: { reorder: 1, kind: 'order' } });
 
-    const dialog = await openHistory(user, 1);
-    await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
-    expect(await block.findByRole('status')).toHaveTextContent(
-      'Pedido #1 cargado en el pedido actual'
+    await waitFor(() =>
+      expect(block.getByRole('status')).toHaveTextContent('Pedido #1 cargado en el pedido actual')
+    );
+    expect(screen.getAllByTestId('order-line')).toHaveLength(2);
+    await waitFor(() => expect(screen.getByTestId('router-state')).toHaveTextContent('null'));
+  });
+
+  test('loads the lines of a past quote requested through the router state', async () => {
+    seedHistory('quote', [pastEntry('quote', 4)]);
+    await renderPage({ pathname: '/', state: { reorder: 4, kind: 'quote' } });
+
+    const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
+    await waitFor(() =>
+      expect(block.getByRole('status')).toHaveTextContent(
+        'Presupuesto #4 cargado en el pedido actual'
+      )
     );
     expect(screen.getAllByTestId('order-line')).toHaveLength(2);
   });
 
-  test('warns about the products that no longer exist when reordering', async () => {
-    const user = await renderPage();
-    await addBoardPiece(user);
+  test('ignores a reorder request for an entry that no longer exists', async () => {
+    await renderPage({ pathname: '/', state: { reorder: 9, kind: 'order' } });
+
+    await waitFor(() => expect(screen.getByTestId('router-state')).toHaveTextContent('null'));
+    expect(screen.queryAllByTestId('order-line')).toHaveLength(0);
+    expect(getProduct).not.toHaveBeenCalled();
+  });
+
+  test('asks before replacing a non-empty order and keeps it when declined', async () => {
+    seedHistory('order', [pastEntry('order', 1)]);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const user = await renderPage('/', { reorder: 1, kind: 'order' });
     await addUnitLine(user);
-    await screen.findByText(/Total: 123,45 EUR/);
-    await confirmOrder(user);
-    await waitFor(() => expect(screen.queryAllByTestId('order-line')).toHaveLength(0));
+
+    await user.click(screen.getByRole('button', { name: 'probe-reorder' }));
+
+    expect(confirm).toHaveBeenCalledWith('¿Reemplazar el pedido actual?');
+    await waitFor(() => expect(screen.getByTestId('router-state')).toHaveTextContent('null'));
+    expect(screen.getAllByTestId('order-line')).toHaveLength(1);
+    expect(getProduct).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  test('replaces a non-empty order when the customer accepts', async () => {
+    seedHistory('order', [pastEntry('order', 1)]);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = await renderPage('/', { reorder: 1, kind: 'order' });
+    await addUnitLine(user);
+
+    await user.click(screen.getByRole('button', { name: 'probe-reorder' }));
+
+    await waitFor(() => expect(screen.getAllByTestId('order-line')).toHaveLength(2));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+  });
+
+  test('warns about the products that no longer exist when reordering', async () => {
+    seedHistory('order', [pastEntry('order', 1)]);
     vi.mocked(getProduct).mockImplementation(async (id: string) => {
       if (id === m2Product.id) return m2Product;
       throw new Error('Product not found');
     });
-
-    const dialog = await openHistory(user, 1);
-    await user.click(within(dialog).getByRole('button', { name: 'Volver a pedir' }));
+    await renderPage({ pathname: '/', state: { reorder: 1, kind: 'order' } });
 
     const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
     const warning = await block.findByText(new RegExp(`ya no existen.*${udProduct.name}`, 'i'));
@@ -436,14 +528,14 @@ describe('CuttingCalculator page', () => {
 
   test('surfaces a families loading error in an alert', async () => {
     vi.mocked(getFamilies).mockRejectedValue(new Error('Familias no disponibles'));
-    render(<CuttingCalculator />);
+    renderApp();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Familias no disponibles');
   });
 
   test('surfaces a products loading error in an alert', async () => {
     vi.mocked(listProducts).mockRejectedValue(new Error('Productos no disponibles'));
-    render(<CuttingCalculator />);
+    renderApp();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Productos no disponibles');
   });
