@@ -1,6 +1,6 @@
 {
   "name": "agloval-custom-cutter",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Full-stack prototype for custom wood material cutting and pricing",
   "private": true,
   "engines": {

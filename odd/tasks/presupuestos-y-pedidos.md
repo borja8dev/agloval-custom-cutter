@@ -24,8 +24,8 @@ Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1
 - [x] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
 - [x] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
 - [x] **T20** Quote → order flow. Changed on 2026-10-30 at the user's request: one "Confirmar" button opens "Confirmar envío", where the user chooses **Presupuesto** (default) or **Pedido** with two selectable cards, then fills the customer details and an optional reference; the entry is saved to the matching history. "Pasar a pedido" (with a price-change notice) and "Repetir" from the quote history. Route: delegated writer.
-- [ ] **T21** Cypress: adapt history specs, stubbed quote flow, Mailpit spec for quote and conversion. Route: delegated writer.
-- [ ] **Release v1.4.0**
+- [x] **T21** Cypress: adapt history specs, stubbed quote flow, Mailpit spec for quote and conversion. Route: delegated writer.
+- [x] **Release v1.4.0**
 
 ## Acceptance criteria
 - Headings read "Selecciona producto", "Medidas y cantidad", "Pedido actual"; each order line shows the product name once.
@@ -50,5 +50,9 @@ Backend: `npm test`, `tsc`, lint. Frontend: `npm test -- --run`, build, lint. Cy
 - **T20** done (delegated writer). Branch `feat/quote-order-flow`. Writer RED→GREEN in api, CustomerDetailsForm, ConfirmSubmissionForm, OrderSummary, HistoryList, CuttingCalculator and HistoryPage tests. Parent spot check: frontend 31 files / 345 tests; full Cypress against the real backend **including the Mailpit spec**: 47/47. "Confirmar envío" window checked in the browser.
 - **T21** largely covered inside T19/T20 (history specs rewritten, quote → order spec, Mailpit spec updated). Remaining: Mailpit check that a quote produces only the customer email.
 
+- **T21** covered inside T19/T20 (history specs rewritten, quote → order spec, Mailpit spec). Checked by hand in the browser and Mailpit on 2026-10-30: a quote sends only "Tu presupuesto · Presupuesto nº 1" to the customer; "Pasar a pedido" sends "Hemos recibido tu solicitud · Pedido nº 2" and "Nuevo pedido nº 2 · María García · Obra Calle Mayor 12".
+- Chain merged in order: #24, #25, #26, #27, #28. Each PR was retargeted to `main` and passed CI (including the DB suites) before merging.
+- **Release v1.4.0**: this PR, then an annotated tag and a GitHub release.
+
 ## Next step
-T21 remainder, then merge the chain in order and release v1.4.0.
+Before real orders: a server-side order number, a privacy policy link and `ORDER_NOTIFICATION_EMAIL`.
