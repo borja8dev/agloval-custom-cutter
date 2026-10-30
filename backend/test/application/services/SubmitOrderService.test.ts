@@ -96,6 +96,20 @@ describe('SubmitOrderService', () => {
     }
   );
 
+  test('passes the reference and the source quote number to both emails', async () => {
+    const service = new SubmitOrderService(quoteUseCase, notifier, {
+      aglovalEmail: 'pedidos@agloval.test',
+    });
+
+    await service.submit({ ...request, reference: 'Obra Calle Mayor', fromQuoteNumber: 4 });
+
+    expect(sent[0]?.subject).toBe('Nuevo pedido nº 9 · Ana García · Obra Calle Mayor');
+    for (const message of sent) {
+      expect(message.text).toContain('Referencia: Obra Calle Mayor');
+      expect(message.text).toContain('Desde el presupuesto nº 4');
+    }
+  });
+
   test('returns the order number and the server quote', async () => {
     const service = new SubmitOrderService(quoteUseCase, notifier, {});
 

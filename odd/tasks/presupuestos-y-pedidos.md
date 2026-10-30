@@ -19,8 +19,8 @@ Many Agloval customers resell. They need a quote to show their own client before
 Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1.3.0. Review mode (RDD) is disabled by the user.
 
 ## Tasks
-- [ ] **T16** Headings without "1. 2. 3."; product name shown once in the order panel (`QuoteGroupList` `showProductName`). Route: inline (2 small files + tests).
-- [ ] **T17** Backend: `POST /api/quotes/submit`, optional `reference`, `fromQuoteNumber`, singular/plural in emails, shared rate limit, docs. Route: delegated writer (many files).
+- [x] **T16** Headings without "1. 2. 3."; product name shown once in the order panel (`QuoteGroupList` `showProductName`). Route: inline (2 small files + tests).
+- [x] **T17** Backend: `POST /api/quotes/submit`, optional `reference`, `fromQuoteNumber`, singular/plural in emails, shared rate limit, docs. Route: delegated writer (many files).
 - [ ] **T18** History data layer: `HistoryRepository`, quote and order histories, v2 → v3 migration, cross-tab `storage` sync. Route: delegated writer.
 - [ ] **T19** `react-router-dom`, layout with shared header, `/presupuestos` and `/pedidos` pages with search, SPA rewrite in `vercel.json`. Route: delegated writer.
 - [ ] **T20** Quote → order flow: "Guardar presupuesto", reference field, "Pasar a pedido" with price-change notice, "Repetir". Route: delegated writer.
@@ -39,7 +39,8 @@ Strategy `feature-branch-chain` (stacked PRs merged in order), as in v1.1.0–v1
 Backend: `npm test`, `tsc`, lint. Frontend: `npm test -- --run`, build, lint. Cypress against the real backend; Mailpit for emails. CI green on every PR.
 
 ## Progress
-_Nothing yet._
+- **T16** done (inline). Commit `3a9cf35`, PR #24. RED→GREEN: new `QuoteGroupList` "can leave out the product name" and `OrderSummary` "names each product once" tests; heading expectations. Frontend 26 files / 263 tests; Cypress cutting-calculator, product-selection, responsive, history 43/43; CI green.
+- **T17** done (delegated writer; trigger: 2+ non-trivial backend files). PR `feat/quote-submission`. Writer RED→GREEN on emails, schemas, services, controllers. Parent spot check: `tsc` ok, lint ok, non-DB suites 29 passed / 407 tests. The 3 DB suites need `DATABASE_URL_TEST`, which this worktree does not expose: verified by CI. Live check against Mailpit: a quote sends only "Tu presupuesto · Presupuesto nº 1" to the customer; an order with `fromQuoteNumber` and a `<…>` reference sends both emails, escaped in HTML, with "1 tablero".
 
 ## Next step
-T16.
+T18 history data layer.

@@ -1,6 +1,6 @@
 import { IOrderSubmitUseCase } from '../ports/in/OrderSubmitUseCase';
 import { IOrderQuoteUseCase } from '../ports/in/OrderQuoteUseCase';
-import { IOrderNotifier, OrderMessage } from '../ports/out/OrderNotifier';
+import { IOrderNotifier } from '../ports/out/OrderNotifier';
 import {
   EmailDeliveryStatus,
   OrderSubmitRequestDTO,
@@ -8,7 +8,7 @@ import {
   SubmittedOrder,
 } from '../dto/OrderSubmit';
 import { buildAglovalEmail, buildCustomerEmail } from '../notifications/orderEmails';
-import { EmailDeliveryException } from '../exceptions/ApplicationException';
+import { deliverEmail } from './deliverEmail';
 
 export interface SubmitOrderOptions {
   /** Where Agloval receives new orders. Unset or blank: no Agloval email is sent. */
@@ -37,26 +37,18 @@ export class SubmitOrderService implements IOrderSubmitUseCase {
     const order: SubmittedOrder = {
       orderNumber: request.orderNumber,
       customer: request.customer,
+      reference: request.reference,
+      fromQuoteNumber: request.fromQuoteNumber,
       quote,
     };
 
     let agloval: EmailDeliveryStatus = 'skipped';
     if (this.aglovalEmail) {
-      await this.deliver({ to: this.aglovalEmail, ...buildAglovalEmail(order) });
+      await deliverEmail(this.notifier, { to: this.aglovalEmail, ...buildAglovalEmail(order) });
       agloval = 'sent';
     }
-    await this.deliver({ to: order.customer.email, ...buildCustomerEmail(order) });
+    await deliverEmail(this.notifier, { to: order.customer.email, ...buildCustomerEmail(order) });
 
     return { orderNumber: order.orderNumber, quote, emails: { customer: 'sent', agloval } };
-  }
-
-  private async deliver(message: OrderMessage): Promise<void> {
-    try {
-      await this.notifier.send(message);
-    } catch (error) {
-      // The cause stays in the server log; the client gets a generic Spanish message.
-      console.error('Order email delivery failed:', error instanceof Error ? error.message : error);
-      throw new EmailDeliveryException();
-    }
   }
 }

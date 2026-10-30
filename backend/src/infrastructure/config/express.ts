@@ -2,10 +2,12 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import { createCalculationRoutes } from '../web/routes/calculations.routes';
 import { createOrderRoutes } from '../web/routes/orders.routes';
+import { createQuoteRoutes } from '../web/routes/quotes.routes';
 import { createFamilyRoutes, createProductRoutes } from '../web/routes/products.routes';
 import { CalculationController } from '../web/controllers/CalculationController';
 import { OrderQuoteController } from '../web/controllers/OrderQuoteController';
 import { OrderSubmitController } from '../web/controllers/OrderSubmitController';
+import { QuoteSubmitController } from '../web/controllers/QuoteSubmitController';
 import { ProductController } from '../web/controllers/ProductController';
 import { requestLogger, responseTime } from '../web/middleware/logging';
 import { errorHandler } from '../web/middleware/errorHandler';
@@ -14,13 +16,18 @@ import { ICalculateUseCase } from '../../application/ports/in/CalculateUseCase';
 import { IProductUseCase } from '../../application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../application/ports/in/OrderQuoteUseCase';
 import { IOrderSubmitUseCase } from '../../application/ports/in/OrderSubmitUseCase';
+import { IQuoteSubmitUseCase } from '../../application/ports/in/QuoteSubmitUseCase';
 
 export interface AppDependencies {
   calculationUseCase: ICalculateUseCase;
   productUseCase: IProductUseCase;
   orderQuoteUseCase: IOrderQuoteUseCase;
   orderSubmitUseCase: IOrderSubmitUseCase;
-  /** Per-IP limit for POST /api/orders/submit; defaults to 5 per 10 minutes. */
+  quoteSubmitUseCase: IQuoteSubmitUseCase;
+  /**
+   * One per-IP budget shared by POST /api/orders/submit and POST /api/quotes/submit;
+   * defaults to 5 per 10 minutes.
+   */
   submitRateLimit?: RateLimitOptions;
 }
 
@@ -29,6 +36,7 @@ export function createExpressApp({
   productUseCase,
   orderQuoteUseCase,
   orderSubmitUseCase,
+  quoteSubmitUseCase,
   submitRateLimit,
 }: AppDependencies): Express {
   const app = express();
@@ -60,13 +68,18 @@ export function createExpressApp({
   const productController = new ProductController(productUseCase);
   const orderQuoteController = new OrderQuoteController(orderQuoteUseCase);
   const orderSubmitController = new OrderSubmitController(orderSubmitUseCase);
+  const quoteSubmitController = new QuoteSubmitController(quoteSubmitUseCase);
+
+  // One limiter instance: both routes that send emails draw from the same budget per IP.
+  const submitLimiter = createRateLimit(submitRateLimit);
 
   app.use('/api/calculations', createCalculationRoutes(calculationController));
   app.use('/api/products', createProductRoutes(productController));
   app.use(
     '/api/orders',
-    createOrderRoutes(orderQuoteController, orderSubmitController, createRateLimit(submitRateLimit))
+    createOrderRoutes(orderQuoteController, orderSubmitController, submitLimiter)
   );
+  app.use('/api/quotes', createQuoteRoutes(quoteSubmitController, submitLimiter));
   app.use('/api/families', createFamilyRoutes(productController));
 
   app.use((req, res) => {

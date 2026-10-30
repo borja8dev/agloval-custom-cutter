@@ -15,6 +15,10 @@ export interface OrderSubmitRequestDTO extends OrderQuoteRequestDTO {
   /** Per-browser order number shown to the customer ("Pedido nº N"). */
   orderNumber: number;
   customer: OrderCustomerDTO;
+  /** The customer's own label for the job; already trimmed, absent when blank. */
+  reference?: string;
+  /** The quote this order was made from ("Pasar a pedido"). */
+  fromQuoteNumber?: number;
   privacyAccepted: true;
 }
 
@@ -22,6 +26,8 @@ export interface OrderSubmitRequestDTO extends OrderQuoteRequestDTO {
 export interface SubmittedOrder {
   orderNumber: number;
   customer: OrderCustomerDTO;
+  reference?: string;
+  fromQuoteNumber?: number;
   quote: OrderQuoteResponseDTO;
 }
 

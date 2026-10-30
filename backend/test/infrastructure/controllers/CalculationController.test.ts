@@ -5,6 +5,7 @@ import { ICalculateUseCase } from '../../../src/application/ports/in/CalculateUs
 import { IProductUseCase } from '../../../src/application/ports/in/ProductUseCase';
 import { IOrderQuoteUseCase } from '../../../src/application/ports/in/OrderQuoteUseCase';
 import { IOrderSubmitUseCase } from '../../../src/application/ports/in/OrderSubmitUseCase';
+import { IQuoteSubmitUseCase } from '../../../src/application/ports/in/QuoteSubmitUseCase';
 import { CalculationResponseDTO } from '../../../src/application/dto/CalculationResponse';
 import {
   CalculationNotFoundException,
@@ -63,6 +64,7 @@ describe('CalculationController - Integration', () => {
       productUseCase: mockProductUseCase,
       orderQuoteUseCase: {} as IOrderQuoteUseCase,
       orderSubmitUseCase: {} as IOrderSubmitUseCase,
+      quoteSubmitUseCase: {} as IQuoteSubmitUseCase,
     });
   });
 

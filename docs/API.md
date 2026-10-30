@@ -224,7 +224,7 @@ curl -X POST http://localhost:5000/api/orders/quote \
 
 ### `POST /api/orders/submit`
 
-Confirms an order: the server prices the lines again (client prices are never trusted), emails the quote to the customer and, when `ORDER_NOTIFICATION_EMAIL` is set, to Agloval. Nothing is stored yet; `orderNumber` is the per-browser number the customer saw ("Pedido nº N"). Limited to 5 requests per IP every 10 minutes.
+Confirms an order: the server prices the lines again (client prices are never trusted), emails the quote to the customer and, when `ORDER_NOTIFICATION_EMAIL` is set, to Agloval. Nothing is stored yet; `orderNumber` is the per-browser number the customer saw ("Pedido nº N"). Limited to 5 requests per IP every 10 minutes, a budget shared with `POST /api/quotes/submit`.
 
 **Request:**
 
@@ -232,6 +232,8 @@ Confirms an order: the server prices the lines again (client prices are never tr
 {
   "orderNumber": 12,
   "customer": { "name": "Lucía Ferrer", "email": "lucia@example.com", "phone": "+34 600 123 456" },
+  "reference": "Obra Calle Mayor",
+  "fromQuoteNumber": 4,
   "privacyAccepted": true,
   "lines": [
     { "productId": "clv9t1a2k0001zzz9qqqqqqqq", "pieces": [{ "width": 100, "height": 80, "quantity": 2 }] },
@@ -244,8 +246,12 @@ Confirms an order: the server prices the lines again (client prices are never tr
 - `customer.name`: 2 to 100 characters after trimming.
 - `customer.email`: a valid address, at most 254 characters.
 - `customer.phone`: digits, spaces, `+`, `(`, `)` and `-` only, with 6 to 15 digits.
+- `reference` (optional): the customer's own label for the job. Trimmed; blank counts as absent. At most 80 characters, no control characters (line breaks, tabs).
+- `fromQuoteNumber` (optional): the quote this order comes from ("Pasar a pedido"), integer, 1 to 1,000,000.
 - `privacyAccepted`: must be `true`.
 - `lines`: exactly as in `POST /api/orders/quote`.
+
+Both emails show "Referencia: …" and "Desde el presupuesto nº M" when those fields are present, and the Agloval subject becomes `Nuevo pedido nº N · Name · Reference`.
 
 **Response:** `201`
 
@@ -272,10 +278,63 @@ curl -X POST http://localhost:5000/api/orders/submit \
 
 **Errors:**
 
-- `400 VALIDATION_ERROR`: malformed body. Customer fields carry Spanish messages for the form ("Introduce tu nombre", "Introduce un correo válido", "Introduce un teléfono válido", "Debes aceptar la política de privacidad") in `details.fieldErrors`.
+- `400 VALIDATION_ERROR`: malformed body. Customer fields carry Spanish messages for the form ("Introduce tu nombre", "Introduce un correo válido", "Introduce un teléfono válido", "Debes aceptar la política de privacidad", "La referencia no puede superar 80 caracteres", "La referencia contiene caracteres no válidos") in `details.fieldErrors`.
 - `404 PRODUCT_NOT_FOUND`, `400 INVALID_ORDER_LINE`, `400 INVALID_PIECE`, `500 INCOMPLETE_PRODUCT`: as in `POST /api/orders/quote`.
-- `429 TOO_MANY_REQUESTS`: more than 5 submissions from the same IP within 10 minutes (counted before validation). A `Retry-After` header gives the seconds left.
+- `429 TOO_MANY_REQUESTS`: more than 5 submissions (orders and quotes together) from the same IP within 10 minutes (counted before validation). A `Retry-After` header gives the seconds left.
 - `502 EMAIL_DELIVERY_FAILED`: the mail server refused or did not answer. The message is "No hemos podido enviar el correo. Inténtalo de nuevo en unos minutos." If the Agloval email went out and the customer email failed, a retry emails Agloval again.
+
+---
+
+## Quotes
+
+### `POST /api/quotes/submit`
+
+Saves a quote for the customer: the server prices the lines again (client prices are never trusted) and emails the quote **to the customer only**. Agloval is never emailed, whatever `ORDER_NOTIFICATION_EMAIL` says; it hears about the job once the quote becomes an order (`POST /api/orders/submit` with `fromQuoteNumber`). Nothing is stored; `quoteNumber` is the per-browser number the customer saw ("Presupuesto nº N"). Shares the per-IP limit of `POST /api/orders/submit`: 5 submissions of either kind every 10 minutes.
+
+**Request:**
+
+```json
+{
+  "quoteNumber": 4,
+  "customer": { "name": "Lucía Ferrer", "email": "lucia@example.com", "phone": "+34 600 123 456" },
+  "reference": "Obra Calle Mayor",
+  "privacyAccepted": true,
+  "lines": [
+    { "productId": "clv9t1a2k0001zzz9qqqqqqqq", "pieces": [{ "width": 100, "height": 80, "quantity": 2 }] },
+    { "productId": "clv9t1a2k0002zzz9qqqqqqqq", "quantity": 12 }
+  ]
+}
+```
+
+- `quoteNumber`: integer, 1 to 1,000,000.
+- `customer`, `reference`, `privacyAccepted`, `lines`: as in `POST /api/orders/submit`.
+
+The email's subject is `Tu presupuesto · Presupuesto nº N`; it shows the breakdown, the total, "Referencia: …" when present, and a note that prices follow the current price list.
+
+**Response:** `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "quoteNumber": 4,
+    "quote": { "groups": [ ... ], "total": 50.34, "currency": "EUR", "calculatedAt": "2026-10-22T10:00:00.000Z" },
+    "emails": { "customer": "sent" }
+  },
+  "timestamp": "...",
+  "requestId": "..."
+}
+```
+
+`quote` has the same shape as the `POST /api/orders/quote` response.
+
+```bash
+curl -X POST http://localhost:5000/api/quotes/submit \
+  -H "Content-Type: application/json" \
+  -d '{"quoteNumber":4,"customer":{"name":"Lucía Ferrer","email":"lucia@example.com","phone":"600 123 456"},"privacyAccepted":true,"lines":[{"productId":"clv9t1a2k0002zzz9qqqqqqqq","quantity":12}]}'
+```
+
+**Errors:** the same as `POST /api/orders/submit`: `400 VALIDATION_ERROR` with the same Spanish messages, the quote errors, `429 TOO_MANY_REQUESTS` (shared budget) and `502 EMAIL_DELIVERY_FAILED`.
 
 ---
 
@@ -400,6 +459,6 @@ curl http://localhost:5000/health
 | `INVALID_DATA` | 400 | Any other Prisma request error, translated |
 | `MISSING_BOARD_DIMENSIONS` | 500 | A stored calculation references a product without board dimensions |
 | `INCOMPLETE_PRODUCT` | 500 | An order quote references a product without board dimensions (M2) or bar length (ML) |
-| `TOO_MANY_REQUESTS` | 429 | Too many order submissions from one IP (Spanish message) |
-| `EMAIL_DELIVERY_FAILED` | 502 | An order email could not be sent (Spanish message) |
+| `TOO_MANY_REQUESTS` | 429 | Too many order or quote submissions from one IP (Spanish message) |
+| `EMAIL_DELIVERY_FAILED` | 502 | An order or quote email could not be sent (Spanish message) |
 | `INTERNAL_SERVER_ERROR` | 500 | Unhandled error — message only shown outside production |

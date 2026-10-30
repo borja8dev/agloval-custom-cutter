@@ -99,4 +99,61 @@ describe('OrderSubmitRequestSchema', () => {
     const { customer: _customer, ...rest } = validBody;
     expect(parse(rest).success).toBe(false);
   });
+
+  describe('reference', () => {
+    test('is optional', () => {
+      const result = parse(validBody);
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.reference).toBeUndefined();
+    });
+
+    test('is trimmed', () => {
+      const result = parse({ ...validBody, reference: '  Obra Calle Mayor  ' });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.reference).toBe('Obra Calle Mayor');
+    });
+
+    test.each(['', '   '])('treats %p as no reference', (reference) => {
+      const result = parse({ ...validBody, reference });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.reference).toBeUndefined();
+    });
+
+    test('accepts 80 characters and rejects 81 in Spanish', () => {
+      expect(parse({ ...validBody, reference: 'x'.repeat(80) }).success).toBe(true);
+      expect(messages({ ...validBody, reference: 'x'.repeat(81) })).toContain(
+        'La referencia no puede superar 80 caracteres'
+      );
+    });
+
+    test.each(['Obra\nMayor', 'Obra\tMayor', 'Obra\u0000Mayor', 'Obra\u007fMayor'])(
+      'rejects control characters in %p in Spanish',
+      (reference) => {
+        expect(messages({ ...validBody, reference })).toContain(
+          'La referencia contiene caracteres no válidos'
+        );
+      }
+    );
+
+    test('accepts accents and punctuation', () => {
+      expect(parse({ ...validBody, reference: 'Cocina Ñoño · nº 3 (bajo)' }).success).toBe(true);
+    });
+  });
+
+  describe('fromQuoteNumber', () => {
+    test('is optional', () => {
+      const result = parse(validBody);
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.fromQuoteNumber).toBeUndefined();
+    });
+
+    test('accepts the bounds', () => {
+      expect(parse({ ...validBody, fromQuoteNumber: 1 }).success).toBe(true);
+      expect(parse({ ...validBody, fromQuoteNumber: 1_000_000 }).success).toBe(true);
+    });
+
+    test.each([0, -1, 1.5, 1_000_001, '3'])('rejects %p', (fromQuoteNumber) => {
+      expect(parse({ ...validBody, fromQuoteNumber }).success).toBe(false);
+    });
+  });
 });
