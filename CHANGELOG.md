@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-30
+
+Quotes and orders. Changes agreed with Agloval in the second review: many customers resell, so they can send themselves a quote to show their own client without ordering from Agloval, and turn it into an order once their client agrees. Both histories have their own pages with search.
+
 ### Added
 - `POST /api/quotes/submit`: prices a quote again on the server and emails it to the customer only ("Tu presupuesto · Presupuesto nº N"); Agloval is never emailed for a quote. It shares the per-IP limit of `POST /api/orders/submit` (5 submissions of either kind per 10 minutes).
 - An optional `reference` (up to 80 characters) on order and quote submissions, shown as "Referencia: …" in the emails and appended to the Agloval subject.
@@ -19,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Pasar a pedido" on the quote history: re-prices the quote with today's products, warns when the price changed or a product no longer exists, and sends it as an order linked to the quote, which is then marked "Convertido en pedido nº N".
 
 ### Changed
+- Section headings read "Selecciona producto", "Medidas y cantidad" and "Pedido actual" (no numbers), and each order line names its product once, in full, above its calculation.
 - Quotes and orders are kept in separate browser histories (up to 200 each); the existing order history moves automatically to the new format, keeping its numbering. Confirmed orders now also remember the customer's details.
 - The history opens in its own browser tab instead of a window over the order manager. The logo and "Gestor de pedidos" in the header link back to the order manager, and the customer greeting is shown on every page.
 - The order panel's button reads "Confirmar" and the panel is titled "Tu pedido" with its line count; the quote or order number now appears in the confirmation window and in the message after sending, and no longer in the panel or the mobile order bar.
@@ -29,7 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - The "Historial (N)" button and the history window (replaced by the history pages).
 
-### Security
+### Upgrade notes
+- No database migration and no new environment variables.
+- The order history saved in each browser moves to the new format on first load (`agloval_order_history_v2` → `agloval_order_history_v3`), keeping every order and its numbering.
+- Static hosting must serve `index.html` for `/presupuestos` and `/pedidos`; `vercel.json` already does.
+- Numbers are still per browser, and `ORDER_NOTIFICATION_EMAIL` stays unset: nothing is sent to a real Agloval address yet.
 
 ## [1.3.0] - 2026-10-22
 
