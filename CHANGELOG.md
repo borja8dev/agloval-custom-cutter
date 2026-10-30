@@ -14,10 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quote and order histories and the customer session now stay in sync across open browser tabs.
 - History pages: `/presupuestos` and `/pedidos`, linked from the header as "Presupuestos" and "Pedidos". Each lists its entries with date, customer, reference, total and state ("Convertido en pedido nº M", "Desde presupuesto nº M"), and can be searched by number, customer or reference (ignoring case and accents). "Repetir" loads an entry back into the order manager.
 - A "Esta página no existe" page for unknown addresses, and an SPA rewrite in `vercel.json` so the new routes load when opened directly.
+- "Confirmar envío": when confirming, the customer chooses between a **Presupuesto** (emailed only to them, saved in the quote history) and a **Pedido** (sent to Agloval, saved in the order history), with two selectable cards that preview the number each one will get.
+- An optional "Referencia" field when confirming (for example, the site or the end customer), validated like the backend.
+- "Pasar a pedido" on the quote history: re-prices the quote with today's products, warns when the price changed or a product no longer exists, and sends it as an order linked to the quote, which is then marked "Convertido en pedido nº N".
 
 ### Changed
 - Quotes and orders are kept in separate browser histories (up to 200 each); the existing order history moves automatically to the new format, keeping its numbering. Confirmed orders now also remember the customer's details.
 - The history opens in its own browser tab instead of a window over the order manager. The logo and "Gestor de pedidos" in the header link back to the order manager, and the customer greeting is shown on every page.
+- The order panel's button reads "Confirmar" and the panel is titled "Tu pedido" with its line count; the quote or order number now appears in the confirmation window and in the message after sending, and no longer in the panel or the mobile order bar.
 
 ### Fixed
 - Emails use the singular for one item: "1 pieza", "1 tablero", "1 barra".

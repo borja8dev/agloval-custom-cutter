@@ -9,7 +9,7 @@ import { useQuoteHistory } from '../hooks/useQuoteHistory';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import type { UseCustomerSessionReturn } from '../hooks/useCustomerSession';
 import { reorderFromHistory } from '../services/reorder';
-import { getErrorMessage, submitOrder } from '../services/api';
+import { getErrorMessage, getFieldError, submitOrder, submitQuote } from '../services/api';
 import { FamilySelect } from '../components/FamilySelect';
 import { ProductList } from '../components/ProductList';
 import { OrderLineForm } from '../components/OrderLineForm';
@@ -18,9 +18,9 @@ import { ExportButton } from '../components/ExportButton';
 import { Alert } from '../components/Alert';
 import { Modal } from '../components/Modal';
 import { OrderBar } from '../components/OrderBar';
-import { CustomerDetailsForm } from '../components/CustomerDetailsForm';
+import { ConfirmSubmissionForm, type Submission } from '../components/ConfirmSubmissionForm';
 import { formatDecimal } from '../utils/formatters';
-import type { CatalogProduct, Customer, HistoryEntry, ReorderRequest } from '../types';
+import type { CatalogProduct, HistoryEntry, ReorderRequest } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -57,6 +57,7 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
 
   const { families, isLoading: isLoadingFamilies, error: familiesError } = useFamilies();
   const {
@@ -70,7 +71,6 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
   const { quote, isLoading: isQuoting, error: quoteError } = useOrderQuote(order.toQuoteRequest());
   const orderHistory = useOrderHistory();
   const quoteHistory = useQuoteHistory();
-  const nextNumber = orderHistory.nextNumber;
   const orderHeadingRef = useRef<HTMLHeadingElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -84,6 +84,7 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
   const handleConfirm = () => {
     if (!quote || order.lines.length === 0) return;
     setSubmitError(null);
+    setReferenceError(null);
     setDetailsOpen(true);
   };
 
@@ -91,30 +92,40 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
     if (!isSubmitting) setDetailsOpen(false);
   };
 
-  const handleSubmitDetails = async (details: Customer) => {
+  // A quote only goes to the customer; an order also goes to Agloval.
+  const handleSubmitDetails = async ({ kind, customer, reference }: Submission) => {
     const confirmedQuote = quote;
     if (isSubmitting || !confirmedQuote) return;
-    const orderNumber = nextNumber;
     const lines = order.lines;
+    const requestLines = order.toQuoteRequest().lines;
+    const details = reference ? { customer, reference } : { customer };
     setIsSubmitting(true);
     setSubmitError(null);
+    setReferenceError(null);
     try {
-      await submitOrder({
-        orderNumber,
-        customer: details,
-        privacyAccepted: true,
-        lines: order.toQuoteRequest().lines,
-      });
-      session.save(details);
-      orderHistory.add(confirmedQuote, lines, { customer: details });
+      let message: string;
+      if (kind === 'quote') {
+        const quoteNumber = quoteHistory.nextNumber;
+        await submitQuote({ quoteNumber, ...details, privacyAccepted: true, lines: requestLines });
+        quoteHistory.add(confirmedQuote, lines, details);
+        message = `Presupuesto nº ${quoteNumber} enviado. Te lo hemos mandado a ${customer.email}.`;
+      } else {
+        const orderNumber = orderHistory.nextNumber;
+        await submitOrder({ orderNumber, ...details, privacyAccepted: true, lines: requestLines });
+        orderHistory.add(confirmedQuote, lines, details);
+        message = `Pedido nº ${orderNumber} enviado a Agloval. Te hemos mandado una copia a ${customer.email}.`;
+      }
+      session.save(customer);
       order.clear();
       setDetailsOpen(false);
-      setOrderStatus({
-        kind: 'success',
-        message: `Pedido nº ${orderNumber} enviado. Te hemos mandado el presupuesto a ${details.email}.`,
-      });
+      setOrderStatus({ kind: 'success', message });
     } catch (err) {
-      setSubmitError(getErrorMessage(err, 'No se pudo enviar el pedido. Inténtalo de nuevo.'));
+      const fieldMessage = getFieldError(err, 'reference');
+      if (fieldMessage) {
+        setReferenceError(fieldMessage);
+      } else {
+        setSubmitError(getErrorMessage(err, 'No se pudo enviar. Inténtalo de nuevo.'));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +261,6 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
                 onConfirm={handleConfirm}
                 isConfirming={isSubmitting}
                 onClear={order.clear}
-                orderNumber={nextNumber}
               />
               <div className="flex justify-end">
                 <ExportButton quote={quote} />
@@ -262,18 +272,22 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
 
       {order.lines.length > 0 && (
         <OrderBar
-          orderNumber={nextNumber}
           lineCount={order.lines.length}
           totalText={quote ? `${formatDecimal(quote.total)} EUR` : '--'}
           onShowOrder={showOrder}
         />
       )}
 
-      <Modal open={detailsOpen} onClose={closeDetails} title="Tus datos">
-        <CustomerDetailsForm
+      <Modal open={detailsOpen} onClose={closeDetails} title="Confirmar envío" size="lg">
+        <ConfirmSubmissionForm
+          quoteNumber={quoteHistory.nextNumber}
+          orderNumber={orderHistory.nextNumber}
+          lineCount={order.lines.length}
+          totalText={quote ? `${formatDecimal(quote.total)} EUR` : '--'}
           initialCustomer={session.customer}
           isSending={isSubmitting}
           error={submitError}
+          referenceError={referenceError}
           onSubmit={handleSubmitDetails}
           onCancel={closeDetails}
         />

@@ -27,10 +27,11 @@ declare global {
       /** Goes back to the order manager on "/" and waits for its data. */
       closeHistory(): Chainable<void>
       /**
-       * Confirms the current order: fills "Tus datos" with test data and submits it. The
-       * submission is stubbed so no mail is sent and the per-IP limit is not consumed.
+       * Confirms the current order as an order (default) or a quote: opens "Confirmar envío",
+       * picks the card, fills the details with test data and submits them. The submission is
+       * stubbed so no mail is sent and the per-IP limit is not consumed.
        */
-      confirmOrder(): Chainable<void>
+      confirmSubmission(kind?: 'quote' | 'order'): Chainable<void>
     }
   }
 }
@@ -138,26 +139,40 @@ Cypress.Commands.add('closeHistory', () => {
   cy.contains('h2', 'Selecciona producto').should('be.visible')
 })
 
-Cypress.Commands.add('confirmOrder', () => {
-  cy.intercept('POST', '**/api/orders/submit', (req) => {
-    const body = req.body as { orderNumber: number }
+const SUBMISSIONS = {
+  quote: { path: '**/api/quotes/submit', card: 'Presupuesto', submit: 'Enviarme el presupuesto' },
+  order: { path: '**/api/orders/submit', card: 'Pedido', submit: 'Enviar pedido a Agloval' },
+} as const
+
+const stubbedQuote = () => ({
+  groups: [],
+  total: 0,
+  currency: 'EUR',
+  calculatedAt: new Date().toISOString(),
+})
+
+Cypress.Commands.add('confirmSubmission', (kind: 'quote' | 'order' = 'order') => {
+  const submission = SUBMISSIONS[kind]
+  cy.intercept('POST', submission.path, (req) => {
+    const body = req.body as { orderNumber?: number; quoteNumber?: number }
+    const data =
+      kind === 'quote'
+        ? { quoteNumber: body.quoteNumber, quote: stubbedQuote(), emails: { customer: 'sent' } }
+        : {
+            orderNumber: body.orderNumber,
+            quote: stubbedQuote(),
+            emails: { customer: 'sent', agloval: 'skipped' },
+          }
     req.reply({
       statusCode: 201,
-      body: {
-        success: true,
-        data: {
-          orderNumber: body.orderNumber,
-          quote: { groups: [], total: 0, currency: 'EUR', calculatedAt: new Date().toISOString() },
-          emails: { customer: 'sent', agloval: 'skipped' },
-        },
-        timestamp: new Date().toISOString(),
-      },
+      body: { success: true, data, timestamp: new Date().toISOString() },
     })
-  }).as('submitOrder')
-  cy.contains('button', 'Confirmar pedido').should('be.enabled').click()
+  }).as('submission')
+  cy.contains('button', /^Confirmar$/).should('be.enabled').click()
   cy.get('[role="dialog"]')
-    .should('contain', 'Tus datos')
+    .should('contain', 'Confirmar envío')
     .within(() => {
+      cy.get('[role="radiogroup"]').contains('label', submission.card).click()
       cy.get('input[autocomplete="name"]').clear()
       cy.get('input[autocomplete="name"]').type(TEST_CUSTOMER.name)
       cy.get('input[autocomplete="email"]').clear()
@@ -165,9 +180,9 @@ Cypress.Commands.add('confirmOrder', () => {
       cy.get('input[autocomplete="tel"]').clear()
       cy.get('input[autocomplete="tel"]').type(TEST_CUSTOMER.phone)
       cy.get('input[type="checkbox"]').check()
-      cy.contains('button', 'Enviar pedido').click()
+      cy.contains('button', submission.submit).click()
     })
-  cy.wait('@submitOrder')
+  cy.wait('@submission')
   cy.get('[role="dialog"]').should('not.exist')
 })
 

@@ -8,7 +8,9 @@ import {
   ProductListResult,
   QuoteRequest,
   SubmitOrderRequest,
-  SubmitOrderResponse
+  SubmitOrderResponse,
+  SubmitQuoteRequest,
+  SubmitQuoteResponse
 } from '../types';
 
 export function getErrorMessage(err: unknown, fallback: string): string {
@@ -21,6 +23,13 @@ export function getErrorMessage(err: unknown, fallback: string): string {
   }
 
   return err instanceof Error ? err.message : fallback;
+}
+
+/** First validation message the backend gave for one request field, if any. */
+export function getFieldError(err: unknown, field: string): string | undefined {
+  if (!axios.isAxiosError(err)) return undefined;
+  const details = (err.response?.data as ApiResponse<never> | undefined)?.error?.details;
+  return details?.fieldErrors?.[field]?.[0];
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -137,6 +146,19 @@ export async function submitOrder(request: SubmitOrderRequest): Promise<SubmitOr
 
   if (!response.data.success || !response.data.data) {
     throw new Error('Failed to submit order');
+  }
+
+  return response.data.data;
+}
+
+export async function submitQuote(request: SubmitQuoteRequest): Promise<SubmitQuoteResponse> {
+  const response = await apiClient.post<ApiResponse<SubmitQuoteResponse>>(
+    '/api/quotes/submit',
+    request
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to submit quote');
   }
 
   return response.data.data;

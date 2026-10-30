@@ -32,11 +32,17 @@ The app runs on port 3000 by default. See `.env.example` for configuration.
 | Path | Page |
 |------|------|
 | `/` | Order manager (`CuttingCalculator`) |
-| `/presupuestos` | Quote history, with search by number, customer or reference |
+| `/presupuestos` | Quote history, with search by number, customer or reference, and "Pasar a pedido" |
 | `/pedidos` | Order history, with the same search |
 | anything else | "Esta página no existe" with a link back to `/` |
 
 The header links "Presupuestos" and "Pedidos" open the histories in a new tab, so the order being built is never replaced by accident. "Repetir" on a history entry goes to `/` with the router state `{ reorder: <number>, kind: 'quote' | 'order' }`; the order manager loads that entry once and clears the state.
+
+### Confirming
+
+"Confirmar" in the order panel opens "Confirmar envío". The customer picks **Presupuesto** (the default: `POST /api/quotes/submit`, emailed to the customer only, saved in the quote history) or **Pedido** (`POST /api/orders/submit`, sent to Agloval, saved in the order history), each card previewing the number it will get, then fills their details, an optional reference and the privacy checkbox. The panel and the mobile order bar show no number, because it depends on that choice.
+
+"Pasar a pedido" on a quote that is not an order yet re-prices its lines with today's products, warns when the price changed or a product no longer exists (sending is then blocked), and sends it as an order with `fromQuoteNumber`; the quote is then marked "Convertido en pedido nº N".
 
 ## Testing
 

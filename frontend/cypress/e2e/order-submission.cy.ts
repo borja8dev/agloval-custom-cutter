@@ -38,7 +38,7 @@ describe('Order submission by email', () => {
     if (!mailpitUrl()) this.skip()
   })
 
-  it('sends the quote to the customer and to Agloval and shows the order number', () => {
+  it('sends the order to the customer and to Agloval and shows the order number', () => {
     // A unique address per run finds this run's messages without clearing the inbox.
     const email = `cypress.${Date.now()}@example.test`
     cy.intercept('POST', '**/api/orders/submit').as('submitOrder')
@@ -48,31 +48,32 @@ describe('Order submission by email', () => {
     cy.pickProduct(SUPERPAN)
     cy.addBoardPiece(100, 80, 20)
 
-    cy.get('aside h3')
+    cy.get('[data-testid="order-total"]')
       .invoke('text')
-      .then((title) => {
-        const orderNumber = Number(/Pedido nº (\d+)/.exec(title)?.[1])
-        expect(orderNumber, 'order number shown while building').to.be.greaterThan(0)
+      .then((totalText) => {
+        const amount = /Total: ([\d.,]+) EUR/.exec(totalText)?.[1] ?? ''
+        expect(amount, 'order total').not.to.equal('')
 
-        cy.get('[data-testid="order-total"]')
+        cy.contains('button', /^Confirmar$/).should('be.enabled').click()
+        cy.get('[role="dialog"]').should('contain', 'Confirmar envío')
+        cy.get('[role="radiogroup"]').contains('label', 'Pedido').click()
+        cy.get('[role="radiogroup"]')
+          .contains('label', 'Pedido')
           .invoke('text')
-          .then((totalText) => {
-            const amount = /Total: ([\d.,]+) EUR/.exec(totalText)?.[1] ?? ''
-            expect(amount, 'order total').not.to.equal('')
+          .then((cardText) => {
+            const orderNumber = Number(/Pedido nº (\d+)/.exec(cardText)?.[1])
+            expect(orderNumber, 'order number shown in the confirmation window').to.be.greaterThan(0)
 
-            cy.contains('button', 'Confirmar pedido').should('be.enabled').click()
-            cy.get('[role="dialog"]')
-              .should('contain', 'Tus datos')
-              .within(() => {
-                cy.get('input[autocomplete="name"]').clear()
-                cy.get('input[autocomplete="name"]').type(TEST_CUSTOMER.name)
-                cy.get('input[autocomplete="email"]').clear()
-                cy.get('input[autocomplete="email"]').type(email)
-                cy.get('input[autocomplete="tel"]').clear()
-                cy.get('input[autocomplete="tel"]').type(TEST_CUSTOMER.phone)
-                cy.get('input[type="checkbox"]').check()
-                cy.contains('button', 'Enviar pedido').click()
-              })
+            cy.get('[role="dialog"]').within(() => {
+              cy.get('input[autocomplete="name"]').clear()
+              cy.get('input[autocomplete="name"]').type(TEST_CUSTOMER.name)
+              cy.get('input[autocomplete="email"]').clear()
+              cy.get('input[autocomplete="email"]').type(email)
+              cy.get('input[autocomplete="tel"]').clear()
+              cy.get('input[autocomplete="tel"]').type(TEST_CUSTOMER.phone)
+              cy.get('input[type="checkbox"]').check()
+              cy.contains('button', 'Enviar pedido a Agloval').click()
+            })
 
             cy.wait('@submitOrder').then(({ response }) => {
               expect(response?.statusCode).to.equal(201)
@@ -81,9 +82,9 @@ describe('Order submission by email', () => {
               cy.get('[role="dialog"]').should('not.exist')
               cy.get('[role="status"]').should(
                 'contain',
-                `Pedido nº ${orderNumber} enviado. Te hemos mandado el presupuesto a ${email}.`
+                `Pedido nº ${orderNumber} enviado a Agloval. Te hemos mandado una copia a ${email}.`
               )
-              cy.get('aside h3').should('contain', `Pedido nº ${orderNumber + 1}`)
+              cy.get('aside h3').should('have.text', 'Tu pedido')
               cy.get('header').should('contain', `Hola, ${TEST_CUSTOMER.name.split(' ')[0]}`)
 
               // The customer's copy of the quote.

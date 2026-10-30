@@ -52,7 +52,7 @@ describe('History pages', () => {
 
   it('saves a confirmed order and lists it on the orders page', () => {
     buildOrder().then((total) => {
-      cy.confirmOrder()
+      cy.confirmSubmission()
 
       cy.get('[role="status"]')
         .should('contain', 'Pedido nº 1 enviado')
@@ -74,7 +74,7 @@ describe('History pages', () => {
 
   it('expands an entry to show the breakdown and collapses it again', () => {
     buildOrder().then((total) => {
-      cy.confirmOrder()
+      cy.confirmSubmission()
       cy.openHistory()
       const entry = () => cy.get('[data-testid="history-entry"]').first()
 
@@ -93,9 +93,9 @@ describe('History pages', () => {
 
   it('searches by number and customer name, ignoring case and accents', () => {
     buildOrder(1)
-    cy.confirmOrder()
+    cy.confirmSubmission()
     buildOrder(2)
-    cy.confirmOrder()
+    cy.confirmSubmission()
 
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').should('have.length', 2)
@@ -117,7 +117,7 @@ describe('History pages', () => {
 
   it('reloads the lines and the total with "Repetir"', () => {
     buildOrder(4).then((total) => {
-      cy.confirmOrder()
+      cy.confirmSubmission()
 
       cy.openHistory()
       cy.contains('[data-testid="history-entry"]', 'Pedido nº 1').contains('button', 'Repetir').click()
@@ -137,9 +137,9 @@ describe('History pages', () => {
 
   it('never reuses an order number after deleting one', () => {
     buildOrder(1)
-    cy.confirmOrder()
+    cy.confirmSubmission()
     buildOrder(2)
-    cy.confirmOrder()
+    cy.confirmSubmission()
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').should('have.length', 2)
     cy.get('[data-testid="history-entry"]').first().should('contain', 'Pedido nº 2')
@@ -149,7 +149,7 @@ describe('History pages', () => {
     cy.closeHistory()
 
     buildOrder(3)
-    cy.confirmOrder()
+    cy.confirmSubmission()
     cy.get('[role="status"]').should('contain', 'Pedido nº 3 enviado')
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').then(($entries) => {
@@ -162,7 +162,7 @@ describe('History pages', () => {
 
   it('needs two clicks to clear the history', () => {
     buildOrder()
-    cy.confirmOrder()
+    cy.confirmSubmission()
     cy.openHistory()
     cy.get('[data-testid="history-entry"]').should('have.length', 1)
 
@@ -179,7 +179,7 @@ describe('History pages', () => {
 
   it('keeps the history after reloading the page', () => {
     buildOrder().then((total) => {
-      cy.confirmOrder()
+      cy.confirmSubmission()
       cy.openHistory()
 
       cy.reload()
@@ -192,6 +192,57 @@ describe('History pages', () => {
       cy.window().then((win) => {
         expect(win.localStorage.getItem('agloval_order_history_v3')).to.be.a('string')
       })
+    })
+  })
+
+  it('saves a quote apart from the orders and turns it into an order', () => {
+    buildOrder().then((total) => {
+      cy.confirmSubmission('quote')
+      cy.get('[role="status"]')
+        .should('contain', 'Presupuesto nº 1 enviado')
+        .and('contain', TEST_CUSTOMER.email)
+
+      cy.openHistory('quote')
+      cy.get('[data-testid="history-entry"]').should('have.length', 1).and('contain', total)
+      cy.intercept('POST', '**/api/orders/submit', (req) => {
+        const body = req.body as { orderNumber: number; fromQuoteNumber: number }
+        expect(body.fromQuoteNumber).to.equal(1)
+        req.reply({
+          statusCode: 201,
+          body: {
+            success: true,
+            data: {
+              orderNumber: body.orderNumber,
+              quote: { groups: [], total: 0, currency: 'EUR', calculatedAt: new Date().toISOString() },
+              emails: { customer: 'sent', agloval: 'skipped' },
+            },
+            timestamp: new Date().toISOString(),
+          },
+        })
+      }).as('convert')
+      cy.contains('[data-testid="history-entry"]', 'Presupuesto nº 1')
+        .contains('button', 'Pasar a pedido')
+        .click()
+      cy.get('[role="dialog"]')
+        .should('contain', 'Pasar a pedido')
+        .within(() => {
+          cy.contains(`Total: ${total}`).should('be.visible')
+          cy.get('input[autocomplete="name"]').should('have.value', TEST_CUSTOMER.name)
+          cy.get('input[type="checkbox"]').check()
+          cy.contains('button', 'Enviar pedido a Agloval').click()
+        })
+      cy.wait('@convert')
+      cy.get('[role="dialog"]').should('not.exist')
+      cy.get('[role="status"]').should('contain', 'Presupuesto nº 1 pasado a pedido nº 1.')
+      cy.contains('[data-testid="history-entry"]', 'Convertido en pedido nº 1')
+        .contains('button', 'Pasar a pedido')
+        .should('not.exist')
+
+      cy.visit('/pedidos')
+      cy.get('[data-testid="history-entry"]')
+        .should('have.length', 1)
+        .and('contain', 'Pedido nº 1')
+        .and('contain', 'Desde presupuesto nº 1')
     })
   })
 

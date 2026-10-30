@@ -11,6 +11,8 @@ export interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
+    /** Validation errors (400) carry the flattened field messages. */
+    details?: { formErrors?: string[]; fieldErrors?: Record<string, string[] | undefined> };
   };
   timestamp: string;
 }
@@ -143,6 +145,10 @@ export interface Customer {
 export interface SubmitOrderRequest extends QuoteRequest {
   orderNumber: number;
   customer: Customer;
+  /** Free-text label for the job, such as the site or the end customer. */
+  reference?: string;
+  /** Set when the order comes from a saved quote. */
+  fromQuoteNumber?: number;
   privacyAccepted: true;
 }
 
@@ -150,6 +156,20 @@ export interface SubmitOrderResponse {
   orderNumber: number;
   quote: OrderQuote;
   emails: { customer: 'sent'; agloval: 'sent' | 'skipped' };
+}
+
+// POST /api/quotes/submit: emails the quote to the customer only.
+export interface SubmitQuoteRequest extends QuoteRequest {
+  quoteNumber: number;
+  customer: Customer;
+  reference?: string;
+  privacyAccepted: true;
+}
+
+export interface SubmitQuoteResponse {
+  quoteNumber: number;
+  quote: OrderQuote;
+  emails: { customer: 'sent' };
 }
 
 // Local order state

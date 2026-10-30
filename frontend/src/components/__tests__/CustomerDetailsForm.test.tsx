@@ -12,6 +12,7 @@ function renderForm(props: Partial<CustomerDetailsFormProps> = {}) {
   render(
     <CustomerDetailsForm
       initialCustomer={null}
+      submitLabel="Enviar pedido a Agloval"
       isSending={false}
       error={null}
       onSubmit={onSubmit}
@@ -27,7 +28,8 @@ const emailInput = () => screen.getByLabelText('Correo electrónico');
 const phoneInput = () => screen.getByLabelText('Teléfono');
 const privacyBox = () =>
   screen.getByLabelText('Acepto que Agloval use estos datos para gestionar mi presupuesto.');
-const submitButton = () => screen.getByRole('button', { name: 'Enviar pedido' });
+const referenceInput = () => screen.getByLabelText('Referencia (opcional)');
+const submitButton = () => screen.getByRole('button', { name: 'Enviar pedido a Agloval' });
 
 async function fill(user: ReturnType<typeof userEvent.setup>, values = lucia) {
   await user.type(nameInput(), values.name);
@@ -45,11 +47,10 @@ describe('CustomerDetailsForm', () => {
     expect(phoneInput()).toHaveAttribute('type', 'tel');
     expect(phoneInput()).toHaveAttribute('autocomplete', 'tel');
     expect(privacyBox()).not.toBeChecked();
-    expect(
-      screen.getByText(
-        'Te enviaremos el presupuesto por correo. Agloval te confirmará disponibilidad y entrega.'
-      )
-    ).toBeInTheDocument();
+    expect(referenceInput()).toHaveAttribute('maxlength', '80');
+    expect(referenceInput()).toHaveAccessibleDescription(
+      'Por ejemplo, el nombre de la obra o de tu cliente'
+    );
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
   });
 
@@ -125,11 +126,74 @@ describe('CustomerDetailsForm', () => {
     await user.click(submitButton());
 
     expect(onSubmit).toHaveBeenCalledWith({
-      name: 'Lucía Ferrer',
-      email: 'lucia@example.com',
-      phone: '(+34) 600-123-456',
+      customer: {
+        name: 'Lucía Ferrer',
+        email: 'lucia@example.com',
+        phone: '(+34) 600-123-456',
+      },
     });
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('reference');
     expect(nameInput()).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('submits the trimmed reference and leaves a blank one out', async () => {
+    const { user, onSubmit } = renderForm({ initialCustomer: lucia });
+    await user.type(referenceInput(), '  Obra Calle Mayor ');
+    await user.click(privacyBox());
+
+    await user.click(submitButton());
+
+    expect(onSubmit).toHaveBeenCalledWith({ customer: lucia, reference: 'Obra Calle Mayor' });
+
+    await user.clear(referenceInput());
+    await user.type(referenceInput(), '   ');
+    await user.click(submitButton());
+    expect(onSubmit.mock.calls[1][0]).toEqual({ customer: lucia });
+  });
+
+  test('prefills the reference when given one', () => {
+    renderForm({ initialCustomer: lucia, initialReference: 'Cocina Ruzafa' });
+    expect(referenceInput()).toHaveValue('Cocina Ruzafa');
+  });
+
+  test.each([
+    ['over 80 characters', 'R'.repeat(81), 'La referencia no puede superar 80 caracteres'],
+    ['with control characters', 'Obra\u0007', 'La referencia contiene caracteres no válidos'],
+  ])('rejects a reference %s and focuses it', async (_case, reference, message) => {
+    const { user, onSubmit } = renderForm({ initialCustomer: lucia, initialReference: reference });
+    await user.click(privacyBox());
+
+    await user.click(submitButton());
+
+    expect(referenceInput()).toHaveAttribute('aria-invalid', 'true');
+    expect(referenceInput()).toHaveAccessibleDescription(expect.stringContaining(message));
+    expect(referenceInput()).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test('shows a reference error from the server next to the field', () => {
+    renderForm({
+      initialCustomer: lucia,
+      referenceError: 'La referencia contiene caracteres no válidos',
+    });
+
+    expect(referenceInput()).toHaveAttribute('aria-invalid', 'true');
+    expect(referenceInput()).toHaveAccessibleDescription(
+      expect.stringContaining('La referencia contiene caracteres no válidos')
+    );
+  });
+
+  test('renders the given content above the fields', () => {
+    renderForm({ children: <p>Resumen del envío</p> });
+    const summary = screen.getByText('Resumen del envío');
+    expect(
+      summary.compareDocumentPosition(nameInput()) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  test('can keep the submit button disabled', () => {
+    renderForm({ initialCustomer: lucia, submitDisabled: true });
+    expect(submitButton()).toBeDisabled();
   });
 
   test('clears a field error once the field is corrected and submitted again', async () => {
@@ -164,7 +228,9 @@ describe('CustomerDetailsForm', () => {
 
     const button = screen.getByRole('button', { name: 'Enviando...' });
     expect(button).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Enviar pedido' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Enviar pedido a Agloval' })
+    ).not.toBeInTheDocument();
   });
 
   test('shows a server error in an alert', () => {
