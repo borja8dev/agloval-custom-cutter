@@ -199,7 +199,7 @@ describe('History pages', () => {
     buildOrder().then((total) => {
       cy.confirmSubmission('quote')
       cy.get('[role="status"]')
-        .should('contain', 'Presupuesto nº 1 enviado')
+        .should('contain', 'Presupuesto nº 1 guardado en tu historial')
         .and('contain', TEST_CUSTOMER.email)
 
       cy.openHistory('quote')

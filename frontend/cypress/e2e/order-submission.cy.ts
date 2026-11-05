@@ -79,6 +79,15 @@ describe('Order submission by email', () => {
               expect(response?.statusCode).to.equal(201)
               const emails = (response?.body as { data: { emails: { agloval: string } } }).data
                 .emails
+              cy.get('[role="dialog"]')
+                .should('contain', 'Pedido enviado')
+                .and(
+                  'contain',
+                  `Pedido nº ${orderNumber} enviado a Agloval. Te hemos mandado una copia a ${email}.`
+                )
+                .find('[data-testid="success-tick"]')
+                .should('exist')
+              cy.get('[role="dialog"]').contains('button', 'Entendido').click()
               cy.get('[role="dialog"]').should('not.exist')
               cy.get('[role="status"]').should(
                 'contain',

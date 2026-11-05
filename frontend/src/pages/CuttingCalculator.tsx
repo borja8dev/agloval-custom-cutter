@@ -19,6 +19,10 @@ import { Alert } from '../components/Alert';
 import { Modal } from '../components/Modal';
 import { OrderBar } from '../components/OrderBar';
 import { ConfirmSubmissionForm, type Submission } from '../components/ConfirmSubmissionForm';
+import {
+  SubmissionSuccessDialog,
+  type SubmissionSuccess,
+} from '../components/SubmissionSuccessDialog';
 import { formatDecimal } from '../utils/formatters';
 import type { CatalogProduct, HistoryEntry, ReorderRequest } from '../types';
 
@@ -58,6 +62,7 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<SubmissionSuccess | null>(null);
 
   const { families, isLoading: isLoadingFamilies, error: familiesError } = useFamilies();
   const {
@@ -108,7 +113,7 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
         const quoteNumber = quoteHistory.nextNumber;
         await submitQuote({ quoteNumber, ...details, privacyAccepted: true, lines: requestLines });
         quoteHistory.add(confirmedQuote, lines, details);
-        message = `Presupuesto nº ${quoteNumber} enviado. Te lo hemos mandado a ${customer.email}.`;
+        message = `Presupuesto nº ${quoteNumber} guardado en tu historial. Te lo hemos mandado a ${customer.email}.`;
       } else {
         const orderNumber = orderHistory.nextNumber;
         await submitOrder({ orderNumber, ...details, privacyAccepted: true, lines: requestLines });
@@ -119,6 +124,7 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
       order.clear();
       setDetailsOpen(false);
       setOrderStatus({ kind: 'success', message });
+      setSuccess({ kind, message });
     } catch (err) {
       const fieldMessage = getFieldError(err, 'reference');
       if (fieldMessage) {
@@ -292,6 +298,8 @@ export const CuttingCalculator: React.FC<CuttingCalculatorProps> = ({ session })
           onCancel={closeDetails}
         />
       </Modal>
+
+      <SubmissionSuccessDialog success={success} onClose={() => setSuccess(null)} />
     </>
   );
 };

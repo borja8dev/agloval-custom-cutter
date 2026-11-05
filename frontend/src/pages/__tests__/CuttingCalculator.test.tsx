@@ -188,8 +188,10 @@ async function fillDetails(
   await user.click(dialog.getByRole('checkbox'));
 }
 
-// Sends the current order as a quote or an order and waits for the window to close.
-async function confirmSubmission(
+const SUCCESS_TITLE = { quote: 'Presupuesto guardado', order: 'Pedido enviado' };
+
+// Sends the current order as a quote or an order and waits for the success window.
+async function sendSubmission(
   user: ReturnType<typeof userEvent.setup>,
   kind: HistoryKind = 'order',
   { customer = lucia, reference }: { customer?: typeof lucia; reference?: string } = {}
@@ -199,13 +201,24 @@ async function confirmSubmission(
   await fillDetails(user, dialog, customer);
   if (reference) await user.type(dialog.getByLabelText('Referencia (opcional)'), reference);
   await user.click(dialog.getByRole('button', { name: SUBMIT_LABEL[kind] }));
+  return screen.findByRole('dialog', { name: SUCCESS_TITLE[kind] });
+}
+
+// Sends the current order, closes the success window and waits for no window to remain.
+async function confirmSubmission(
+  user: ReturnType<typeof userEvent.setup>,
+  kind: HistoryKind = 'order',
+  options: { customer?: typeof lucia; reference?: string } = {}
+) {
+  const success = within(await sendSubmission(user, kind, options));
+  await user.click(success.getByRole('button', { name: 'Entendido' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 }
 
 const sentMessage = (number: number, email = lucia.email) =>
   `Pedido nº ${number} enviado a Agloval. Te hemos mandado una copia a ${email}.`;
 const quoteSentMessage = (number: number, email = lucia.email) =>
-  `Presupuesto nº ${number} enviado. Te lo hemos mandado a ${email}.`;
+  `Presupuesto nº ${number} guardado en tu historial. Te lo hemos mandado a ${email}.`;
 
 describe('CuttingCalculator page', () => {
   beforeEach(() => {
@@ -328,6 +341,39 @@ describe('CuttingCalculator page', () => {
     expect(screen.getAllByTestId('order-line')).toHaveLength(1);
     expect(storedOrders()).toHaveLength(0);
     expect(storedQuotes()).toHaveLength(0);
+  });
+
+  test('sending a quote shows a success window with a tick that says it was saved, not sent to Agloval', async () => {
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+
+    const success = await sendSubmission(user, 'quote');
+
+    expect(screen.queryByRole('dialog', { name: 'Confirmar envío' })).not.toBeInTheDocument();
+    expect(within(success).getByTestId('success-tick')).toBeInTheDocument();
+    expect(success).toHaveTextContent(quoteSentMessage(1));
+    expect(success).toHaveTextContent('Agloval no recibe nada: no se pone en marcha ningún pedido.');
+
+    await userEvent.setup().click(within(success).getByRole('button', { name: 'Entendido' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const block = within(screen.getByRole('region', { name: 'Pedido actual' }));
+    expect(block.getByRole('status')).toHaveTextContent(quoteSentMessage(1));
+  });
+
+  test('sending an order shows a success window with a tick that says it went to Agloval', async () => {
+    const user = await renderPage();
+    await addBoardPiece(user);
+    await screen.findByText(/Total: 123,45 EUR/);
+
+    const success = await sendSubmission(user, 'order');
+
+    expect(within(success).getByTestId('success-tick')).toBeInTheDocument();
+    expect(success).toHaveTextContent(sentMessage(1));
+    expect(success).toHaveTextContent(
+      'Agloval te confirmará disponibilidad y entrega por correo.'
+    );
+    expect(success).not.toHaveTextContent('Agloval no recibe nada');
   });
 
   test('sending a quote emails it to the customer only and saves it as a quote', async () => {
@@ -461,7 +507,8 @@ describe('CuttingCalculator page', () => {
     expect(screen.getByRole('button', { name: 'Confirmando...' })).toBeDisabled();
 
     resolveSubmit();
-    expect(await screen.findByText(sentMessage(1))).toBeInTheDocument();
+    const success = await screen.findByRole('dialog', { name: SUCCESS_TITLE.order });
+    expect(success).toHaveTextContent(sentMessage(1));
   });
 
   test('"Cerrar sesión" removes the greeting and keeps the history', async () => {

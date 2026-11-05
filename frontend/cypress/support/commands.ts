@@ -28,7 +28,8 @@ declare global {
       closeHistory(): Chainable<void>
       /**
        * Confirms the current order as an order (default) or a quote: opens "Confirmar envío",
-       * picks the card, fills the details with test data and submits them. The submission is
+       * picks the card, fills the details with test data, submits them and closes the success
+       * window. The submission is
        * stubbed so no mail is sent and the per-IP limit is not consumed.
        */
       confirmSubmission(kind?: 'quote' | 'order'): Chainable<void>
@@ -140,8 +141,18 @@ Cypress.Commands.add('closeHistory', () => {
 })
 
 const SUBMISSIONS = {
-  quote: { path: '**/api/quotes/submit', card: 'Presupuesto', submit: 'Enviarme el presupuesto' },
-  order: { path: '**/api/orders/submit', card: 'Pedido', submit: 'Enviar pedido a Agloval' },
+  quote: {
+    path: '**/api/quotes/submit',
+    card: 'Presupuesto',
+    submit: 'Enviarme el presupuesto',
+    success: 'Presupuesto guardado',
+  },
+  order: {
+    path: '**/api/orders/submit',
+    card: 'Pedido',
+    submit: 'Enviar pedido a Agloval',
+    success: 'Pedido enviado',
+  },
 } as const
 
 const stubbedQuote = () => ({
@@ -183,6 +194,11 @@ Cypress.Commands.add('confirmSubmission', (kind: 'quote' | 'order' = 'order') =>
       cy.contains('button', submission.submit).click()
     })
   cy.wait('@submission')
+  cy.get('[role="dialog"]')
+    .should('contain', submission.success)
+    .find('[data-testid="success-tick"]')
+    .should('exist')
+  cy.get('[role="dialog"]').contains('button', 'Entendido').click()
   cy.get('[role="dialog"]').should('not.exist')
 })
 

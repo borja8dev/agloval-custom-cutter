@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- After confirming, a success window with a green tick says what happened: "Presupuesto guardado" (saved in the history; Agloval receives nothing) or "Pedido enviado" (sent to Agloval, who confirms availability and delivery by email). "Entendido" closes it.
+
+### Changed
+- "Confirmar envío" explains each choice as "Calculamos el precio de tu corte y lo guardamos en tu historial. Agloval no recibe nada: no se pone en marcha ningún pedido." (Presupuesto) and "Enviamos tu corte a Agloval para ponerlo en marcha." (Pedido).
+- The message after sending a quote reads "Presupuesto nº N guardado en tu historial. Te lo hemos mandado a …".
+
 ## [1.4.0] - 2026-10-30
 
 Quotes and orders. Changes agreed with Agloval in the second review: many customers resell, so they can send themselves a quote to show their own client without ordering from Agloval, and turn it into an order once their client agrees. Both histories have their own pages with search.
