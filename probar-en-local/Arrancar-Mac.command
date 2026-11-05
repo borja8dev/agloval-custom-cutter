@@ -10,7 +10,7 @@ fail() {
   echo
   echo "ERROR: $1"
   echo
-  read -r -p "Pulsa Enter para cerrar esta ventana."
+  read -r -p "Pulsa Enter para cerrar esta ventana." || true
   exit 1
 }
 
@@ -41,4 +41,5 @@ echo "Listo. La aplicación está abierta en tu navegador: $APP_URL"
 echo "Los correos que envía (presupuestos y pedidos) llegan aquí: http://localhost:8581"
 echo "Para apagarla, abre Parar-Mac.command."
 echo
-read -r -p "Pulsa Enter para cerrar esta ventana (la aplicación sigue funcionando)."
+read -r -p "Pulsa Enter para cerrar esta ventana (la aplicación sigue funcionando)." || true
+exit 0

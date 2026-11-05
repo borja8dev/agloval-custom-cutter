@@ -17,7 +17,8 @@ if [ "$categories" = "0" ]; then
     npm run catalog:import -- --file "$TARIFF" --apply --backup-file "$backup" --report-dir /tmp/catalog-report
   else
     echo "[setup] Empty catalog and no tariff at $TARIFF: loading the demo products"
-    npm run seed
+    # Not `npm run seed`: its `node --loader tsx/cjs` cannot load .ts files on Node 20.20.
+    npx tsx prisma/seed.ts
   fi
 else
   echo "[setup] Catalog already loaded ($categories families): keeping it"
