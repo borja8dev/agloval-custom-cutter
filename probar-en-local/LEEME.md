@@ -7,13 +7,14 @@ Todo funciona en local: **ningún correo sale de tu ordenador** y nada de lo que
 
 Solo **Docker Desktop** (gratuito), en Mac o en Windows.
 
-1. Descárgalo de https://www.docker.com/products/docker-desktop/ e instálalo.
+1. Descárgalo de https://www.docker.com/products/docker-desktop/ e instálalo. Si ya lo tenías, actualízalo a la última versión.
 2. Ábrelo una vez y acepta las condiciones. Puedes saltarte el registro ("Skip").
+   En Windows, la primera instalación puede pedirte reiniciar el ordenador o instalar "WSL": acepta lo que te proponga.
 3. Espera a que abajo a la izquierda ponga **"Engine running"** (en verde).
 
 ## Arrancar
 
-Descomprime el zip donde quieras (por ejemplo, en el Escritorio) y entra en la carpeta `probar-en-local`.
+**Primero descomprime el zip** (doble clic en Mac; en Windows, botón derecho → "Extraer todo") en una carpeta normal, por ejemplo `Documentos`. No lo abras directamente desde dentro del zip. Después entra en la carpeta `probar-en-local`.
 
 ### En Mac
 
@@ -61,6 +62,7 @@ Haz doble clic en **`Parar-Mac.command`** o en **`Parar-Windows.bat`**. Los pres
 ## Si algo falla
 
 - **"No encuentro Docker"** o **"Docker Desktop no está en marcha"**: abre Docker Desktop, espera a que ponga *Engine running* y vuelve a arrancar.
+- **"unknown flag: --wait"**: tu Docker Desktop es antiguo. Actualízalo y vuelve a arrancar.
 - **"port is already allocated"**: otro programa usa el puerto 8580 u 8581. Ciérralo o reinicia el ordenador y vuelve a arrancar.
 - **Cualquier otro error**: copia el texto de la ventana negra y envíaselo a Borja.
 
