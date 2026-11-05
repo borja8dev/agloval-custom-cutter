@@ -53,11 +53,12 @@ describe('ConfirmSubmissionForm', () => {
       expect.stringContaining('Presupuesto nº 4')
     );
     expect(quoteRadio()).toHaveAccessibleDescription(
-      expect.stringContaining('Agloval no recibe nada todavía.')
+      'Presupuesto nº 4 Calculamos el precio de tu corte y lo guardamos en tu historial. Agloval no recibe nada: no se pone en marcha ningún pedido.'
     );
+    expect(quoteRadio()).not.toHaveAccessibleDescription(expect.stringContaining('cliente'));
     expect(orderRadio()).toHaveAccessibleDescription(expect.stringContaining('Pedido nº 9'));
     expect(orderRadio()).toHaveAccessibleDescription(
-      expect.stringContaining('Agloval recibe tu pedido')
+      'Pedido nº 9 Enviamos tu corte a Agloval para ponerlo en marcha.'
     );
   });
 

@@ -28,12 +28,12 @@ const OPTIONS: Record<
 > = {
   quote: {
     title: 'Presupuesto',
-    text: 'Te lo enviamos por correo para que lo revises o se lo enseñes a tu cliente. Agloval no recibe nada todavía.',
+    text: 'Calculamos el precio de tu corte y lo guardamos en tu historial. Agloval no recibe nada: no se pone en marcha ningún pedido.',
     submitLabel: 'Enviarme el presupuesto',
   },
   order: {
     title: 'Pedido',
-    text: 'Agloval recibe tu pedido y te confirma disponibilidad y entrega por correo.',
+    text: 'Enviamos tu corte a Agloval para ponerlo en marcha.',
     submitLabel: 'Enviar pedido a Agloval',
   },
 };
