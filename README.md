@@ -12,6 +12,10 @@ A web solution that allows customers to purchase wood boards in custom dimension
 
 Not deployed yet — see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the runbook.
 
+> **¿Quieres probarlo en tu ordenador?** Solo necesitas Docker Desktop: sigue [probar-en-local/LEEME.md](./probar-en-local/LEEME.md).
+>
+> **Run everything locally with Docker only:** `docker compose -f docker-compose.local.yml up -d --build --wait`, then open http://localhost:8580 (local email inbox at http://localhost:8581). An empty database is loaded from `data/source/TARIFA_AGLOVAL_JULIO2026.csv` when present (never committed; `scripts/package-local-handoff.sh` builds a zip with it for Agloval), otherwise from the demo seed.
+
 ---
 
 ## The Problem

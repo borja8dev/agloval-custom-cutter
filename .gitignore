@@ -63,3 +63,6 @@ data/reports/
 
 # Database dumps (contain real prices, never commit)
 data/backups/
+
+# Zips for Agloval with the real tariff inside (scripts/package-local-handoff.sh), never commit
+data/handoff/

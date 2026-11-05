@@ -1,0 +1,34 @@
+#!/bin/sh
+# Starts the backend of the local stack: migrate, load a catalog into an empty database, serve.
+set -eu
+
+TARIFF=/data/source/TARIFA_AGLOVAL_JULIO2026.csv
+
+echo "[setup] Applying database migrations"
+npx prisma migrate deploy
+
+# A row here means a catalog load finished. Without it (first start, or a load cut short by
+# sleep or a crash) the catalog is emptied and loaded again, never kept half done.
+psql -v ON_ERROR_STOP=1 -q "$DATABASE_URL" \
+  -c 'CREATE TABLE IF NOT EXISTS local_setup (catalog_loaded_at timestamptz NOT NULL)'
+loaded=$(psql "$DATABASE_URL" -tAc 'SELECT count(*) FROM local_setup')
+if [ "$loaded" = "0" ]; then
+  psql -v ON_ERROR_STOP=1 -q "$DATABASE_URL" -c 'TRUNCATE categories, products RESTART IDENTITY CASCADE'
+  if [ -f "$TARIFF" ]; then
+    echo "[setup] No finished catalog load: importing the Agloval tariff from $TARIFF"
+    # The importer refuses to apply without a recent, complete pg_dump.
+    backup=/tmp/before-catalog-import.sql
+    pg_dump "$DATABASE_URL" > "$backup"
+    npm run catalog:import -- --file "$TARIFF" --apply --backup-file "$backup" --report-dir /tmp/catalog-report
+  else
+    echo "[setup] No finished catalog load and no tariff at $TARIFF: loading the demo products"
+    # Not `npm run seed`: its `node --loader tsx/cjs` cannot load .ts files on Node 20.20.
+    npx tsx prisma/seed.ts
+  fi
+  psql -v ON_ERROR_STOP=1 -q "$DATABASE_URL" -c 'INSERT INTO local_setup VALUES (now())'
+else
+  echo "[setup] Catalog already loaded: keeping it"
+fi
+
+echo "[setup] Starting the server"
+exec npm start

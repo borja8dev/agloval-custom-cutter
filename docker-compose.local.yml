@@ -1,0 +1,70 @@
+# Whole app on one computer with Docker Desktop only (guide: probar-en-local/LEEME.md).
+#   docker compose -f docker-compose.local.yml up -d --build
+# App:   http://localhost:8580
+# Inbox: http://localhost:8581 (every email stays here; nothing is sent to the internet)
+# The development stack is docker-compose.yml; this file shares no names or ports with it.
+name: agloval-local
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: agloval
+      POSTGRES_PASSWORD: agloval
+      POSTGRES_DB: agloval
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agloval -d agloval']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mail:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - '8581:8025'
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://agloval:agloval@db:5432/agloval
+      CORS_ORIGIN: http://localhost:8580
+      SMTP_HOST: mail
+      SMTP_PORT: '1025'
+      # Agloval's copy of each order also lands in the local inbox.
+      ORDER_NOTIFICATION_EMAIL: pedidos@agloval.local
+    volumes:
+      # If the tariff CSV is here, an empty database is loaded from it; otherwise demo products.
+      - ./data/source:/data/source:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 300s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8580
+    ports:
+      - '8580:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db_data:
